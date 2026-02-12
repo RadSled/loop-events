@@ -1,0 +1,20 @@
+{
+  "name": "loop-events",
+  "publicDir": "public",
+  "size": "default",
+  "apiVersion": "2",
+  "telemetry": {
+    "global": {
+      "allowTelemetry": false,
+      "lastPrompted": 1770924154358,
+      "version": "1.12.0"
+    }
+  },
+  "library": {
+    "components": [
+      "**/*.webflow.@(js|jsx|mjs|ts|tsx)"
+    ],
+    "name": "Loop Events",
+    "description": "Create recurring events from existing CMS items"
+  }
+}
