@@ -854,7 +854,6 @@ function AuthenticatedApp(props: {
                             <div className="le-schedChip">Every {s.interval}</div>
                             <div className="le-schedChip">Copies {s.count}</div>
                             <div className="le-schedChip">{outputLabel}</div>
-                            <div className="le-schedChip">Auto every 10 seconds</div>
                             <div className="le-schedChip">{cleanupLabel}</div>
                           </div>
 
@@ -1189,13 +1188,14 @@ function AuthenticatedApp(props: {
                                     const canRollback = !run?.rolledBackAt && Number(run?.createdCount || 0) > 0
                                     const disabled = !runId || !canRollback || rollingBackRunId === runId
                                     const sourceLabel = String(run?.source || "") === "manual" ? "Initial run" : "Auto-refill"
+                                    const runTimeLabel = run?.createdAt ? new Date(run.createdAt).toLocaleString() : "-"
                                     return (
                                       <div className="le-detailsHistoryRow" key={`${runId || "run"}-${idx}`}>
                                         <div className="le-detailsHistoryTop">
-                                          <span className="le-detailsHistoryItem">{sourceLabel}</span>
-                                          <span>{run?.createdAt ? new Date(run.createdAt).toLocaleString() : "-"}</span>
+                                          <span className="le-detailsHistoryItem">{runTimeLabel}</span>
                                         </div>
                                         <div className="le-detailsHistoryPills">
+                                          <span className="le-detailsHistoryState is-source">{sourceLabel}</span>
                                           <span className={`le-detailsHistoryState is-${String(run?.status || "ok")}`}>{run?.status || "ok"}</span>
                                           <span className="le-detailsHistoryState">Created {Number(run?.createdCount || 0)} item(s)</span>
                                           {run?.rolledBackAt ? <span className="le-detailsHistoryState">Rolled back</span> : null}
@@ -1220,7 +1220,17 @@ function AuthenticatedApp(props: {
                                                 })
                                               }}
                                             >
-                                              {rollingBackRunId === runId ? "Rolling back..." : "Rollback"}
+                                              {rollingBackRunId === runId ? (
+                                                "..."
+                                              ) : (
+                                                <>
+                                                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                    <path d="M7 7v4h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                                    <path d="M7.2 11a6 6 0 1 0 1.6-4.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                                  </svg>
+                                                  <span>Rollback</span>
+                                                </>
+                                              )}
                                             </button>
                                           ) : null}
                                         </div>

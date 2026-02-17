@@ -3443,33 +3443,37 @@ button:disabled,
 
 /* Auto-refill compact card + details modal redesign */
 .le-schedChips {
-  margin-top: 8px;
+  margin-top: 7px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
 }
 
 .le-schedChip {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
   color: #66758d;
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid #e5ebf4;
   background: #f8fbff;
 }
 
 .le-schedStats {
-  margin-top: 8px;
+  margin-top: 7px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .le-schedStat {
-  font-size: 10px;
-  color: #6a778d;
+  font-size: 9.5px;
+  color: #5f6f88;
+  border: 1px solid #dce6f5;
+  background: #f7faff;
+  border-radius: 999px;
+  padding: 3px 8px;
 }
 
 .le-schedStat strong {
@@ -3617,7 +3621,7 @@ button:disabled,
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .le-detailsHistoryPills {
@@ -3652,6 +3656,7 @@ button:disabled,
 .le-detailsHistoryState.is-deleted { border-color: #f1c0c0; background: #fff2f2; color: #b93b3b; }
 .le-detailsHistoryState.is-ok { border-color: #b9e3cb; background: #ecfaf2; color: #1e7f48; }
 .le-detailsHistoryState.is-error { border-color: #f1c0c0; background: #fff2f2; color: #b93b3b; }
+.le-detailsHistoryState.is-source { border-color: #d9e2f2; background: #f2f6fd; color: #45556f; }
 
 .le-detailsHistoryMeta {
   margin-top: 4px;
@@ -3664,14 +3669,17 @@ button:disabled,
 
 .le-detailsRunRollback {
   margin-left: auto;
-  height: 18px;
+  height: 19px;
   border-radius: 999px;
-  border: 1px solid #d4deee;
-  background: #f7faff;
-  color: #2f3c57;
+  border: 1px solid #bdccef;
+  background: #edf3ff;
+  color: #4056b4;
   font-size: 8.5px;
   font-weight: 700;
-  padding: 0 8px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .le-detailsRunRollback:disabled {
@@ -5068,13 +5076,14 @@ textarea {
 .le-schedRunWrap {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  margin-left: auto;
 }
 
 .le-inlineRetry {
-  width: 21px;
-  height: 21px;
-  border-radius: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
   border: 1px solid #bfd0ff;
   background: #edf2ff;
   color: #4f5bcf;
