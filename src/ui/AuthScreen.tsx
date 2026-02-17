@@ -1,0 +1,316 @@
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import LogoIcon from "./LogoIcon"
+
+declare global {
+  interface Window {
+    __LOOP_EVENTS_BACKEND__?: string
+  }
+}
+
+function apiUrl(path: string) {
+  const base = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
+  if (!base) return path
+  const clean = base.replace(/\/+$/, "")
+  const p = path.startsWith("/") ? path : `/${path}`
+  return `${clean}${p}`
+}
+
+function authCallbackUrl() {
+  const base = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
+  if (!base) return `${window.location.origin}/auth/callback`
+  const clean = base.replace(/\/+$/, "")
+  return `${clean}/auth/callback`
+}
+
+function createAttemptId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return `attempt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+export default function AuthScreen(props: {
+  supabase: SupabaseClient | null
+  configError?: string
+}) {
+  const { supabase, configError = "" } = props
+  const [mode, setMode] = useState<"signin" | "signup">("signin")
+  const [fullName, setFullName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<{ type: "idle" | "ok" | "err"; msg: string }>({
+    type: "idle",
+    msg: "",
+  })
+  const relayTimerRef = useRef<number | null>(null)
+
+  const ctaLabel = useMemo(() => (mode === "signin" ? "Log in" : "Sign up"), [mode])
+  const busyLabel = useMemo(() => {
+    if (!busy) return ctaLabel
+    return mode === "signin" ? "Signing in..." : "Creating account..."
+  }, [busy, ctaLabel, mode])
+  const callbackUrl = authCallbackUrl()
+
+  useEffect(() => {
+    return () => {
+      if (relayTimerRef.current) {
+        window.clearTimeout(relayTimerRef.current)
+        relayTimerRef.current = null
+      }
+    }
+  }, [])
+
+  function stopRelayPolling() {
+    if (relayTimerRef.current) {
+      window.clearTimeout(relayTimerRef.current)
+      relayTimerRef.current = null
+    }
+  }
+
+  function startRelayPolling(attemptId: string) {
+    stopRelayPolling()
+    const startedAt = Date.now()
+
+    const run = async () => {
+      if (!supabase) return
+
+      if (Date.now() - startedAt > 120000) {
+        setStatus({ type: "err", msg: "Google login timed out. Please try again." })
+        return
+      }
+
+      try {
+        const res = await fetch(apiUrl(`/api/auth/relay/${encodeURIComponent(attemptId)}`))
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(String(data && data.error ? data.error : "Auth relay failed"))
+
+        if (String(data && data.status) === "ready") {
+          const accessToken = String(data && data.accessToken ? data.accessToken : "").trim()
+          const refreshToken = String(data && data.refreshToken ? data.refreshToken : "").trim()
+          if (!accessToken || !refreshToken) throw new Error("Auth relay returned invalid session")
+
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+          if (error) throw error
+          stopRelayPolling()
+          return
+        }
+      } catch (err: any) {
+        setStatus({ type: "err", msg: String(err?.message || err || "Could not finish Google login") })
+        stopRelayPolling()
+        return
+      }
+
+      relayTimerRef.current = window.setTimeout(run, 700)
+    }
+
+    void run()
+  }
+
+  async function onEmailSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy) return
+    if (!supabase) return
+    setStatus({ type: "idle", msg: "" })
+    setBusy(true)
+
+    try {
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: callbackUrl,
+            data: {
+              full_name: fullName.trim(),
+              name: fullName.trim(),
+            },
+          },
+        })
+        if (error) throw error
+        setStatus({ type: "ok", msg: "Account created. You can now log in." })
+        setMode("signin")
+      }
+    } catch (err: any) {
+      const msg = String(err?.message || err || "Authentication failed")
+      if (/user already registered/i.test(msg)) {
+        setStatus({
+          type: "err",
+          msg: "This user account already exists.",
+        })
+      } else {
+        setStatus({ type: "err", msg })
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function signInWith(provider: "google") {
+    if (busy) return
+    if (!supabase) return
+    setStatus({ type: "idle", msg: "" })
+    setBusy(true)
+    const attemptId = createAttemptId()
+    const relayCallbackUrl = `${callbackUrl}?auth_attempt=${encodeURIComponent(attemptId)}`
+    const popup = window.open("", "loop-events-oauth", "popup=yes,width=540,height=720")
+    if (!popup) {
+      setStatus({ type: "err", msg: "Popup blocked. Please allow popups and try again." })
+      setBusy(false)
+      return
+    }
+    try {
+      const oauthRes = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: relayCallbackUrl,
+          skipBrowserRedirect: true,
+        },
+      })
+      if (oauthRes.error) throw oauthRes.error
+      const nextUrl = String(oauthRes?.data?.url || "").trim()
+      if (!nextUrl) throw new Error("Could not start OAuth flow")
+      popup.location.href = nextUrl
+      startRelayPolling(attemptId)
+      setBusy(false)
+    } catch (err: any) {
+      try {
+        popup.close()
+      } catch {
+        // ignore close errors
+      }
+      setStatus({ type: "err", msg: String(err?.message || err || `${provider} login failed`) })
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="le-authWrap">
+      <div className="le-authCard le-authMainCard">
+        <div className="le-authHead">
+          <div className="le-authBrand">
+            <span className="le-authBrandLogo" aria-hidden="true">
+              <LogoIcon />
+            </span>
+            <span className="le-authBrandName">Loop Events</span>
+          </div>
+        </div>
+
+        {configError ? <div className="le-alert warn">{configError}</div> : null}
+
+        {mode === "signin" ? (
+          <>
+            <div className="le-authSocials">
+              <button className="le-socialBtn le-socialBtnGoogle" type="button" onClick={() => signInWith("google")} disabled={busy || !supabase}>
+                <span className="le-socialIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.39a4.61 4.61 0 0 1-2 3.03v2.51h3.23c1.88-1.73 2.98-4.28 2.98-7.44z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 22c2.7 0 4.97-.89 6.63-2.41l-3.23-2.51c-.89.6-2.02.96-3.4.96-2.61 0-4.83-1.76-5.62-4.13H3.05v2.58A9.99 9.99 0 0 0 12 22z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M6.38 13.91a6 6 0 0 1 0-3.82V7.51H3.05a9.99 9.99 0 0 0 0 8.98l3.33-2.58z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 5.96c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.62 9.62 0 0 0 12 2a9.99 9.99 0 0 0-8.95 5.51l3.33 2.58c.79-2.37 3.01-4.13 5.62-4.13z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                </span>
+                <span className="le-socialText">Continue with Google</span>
+              </button>
+            </div>
+
+            <div className="le-authDivider">or use email</div>
+          </>
+        ) : null}
+
+        <form className="le-stack" onSubmit={onEmailSubmit}>
+          {mode === "signup" ? <div className="le-authSignupTitle">Sign up</div> : null}
+          {mode === "signup" ? (
+            <div>
+              <div className="le-label">Full name</div>
+              <input
+                className="le-input"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Your name"
+                required
+                autoComplete="name"
+              />
+            </div>
+          ) : null}
+          <div>
+            <div className="le-label">Email</div>
+            <input
+              className="le-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+            />
+          </div>
+
+          <div>
+            <div className="le-label">Password</div>
+            <input
+              className="le-input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={mode === "signup" ? "Minimum 6 characters" : "Your password"}
+              minLength={mode === "signup" ? 6 : undefined}
+              required
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            />
+            {mode === "signup" ? <div className="le-hint">Minimum 6 characters</div> : null}
+          </div>
+
+          <button className="le-btn primary" type="submit" disabled={busy || !supabase}>
+            {busyLabel}
+          </button>
+        </form>
+
+        <div className="le-authBottom">
+          {mode === "signin" ? (
+            <button className="le-linkBtn" type="button" onClick={() => setMode("signup")} disabled={busy}>
+              No account yet? Sign up
+            </button>
+          ) : (
+            <button
+              className="le-linkBtn"
+              type="button"
+              onClick={() => {
+                setMode("signin")
+                setFullName("")
+              }}
+              disabled={busy}
+            >
+              Already have an account? Log in
+            </button>
+          )}
+        </div>
+
+        {status.msg ? <div className={`le-authStatus ${status.type === "err" ? "is-err" : status.type === "ok" ? "is-ok" : ""}`}>{status.msg}</div> : null}
+      </div>
+    </div>
+  )
+}

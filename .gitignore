@@ -1,3 +1,14 @@
 
 .env
-
+.env.local
+node_modules/
+backend/node_modules/
+backend/.env
+backend/tokens.dev.json
+backend/schedules/schedules.json
+backend/data/
+schedules/schedules.json
+notifications/
+schedules/
+.DS_Store
+**/.DS_Store

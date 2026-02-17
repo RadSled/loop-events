@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently \"webflow extension serve\" \"npm run watch-webpack\" \"npm run oauth\"",
-    "oauth": "node server/oauth.js",
+    "oauth": "node backend/server.js",
     "build": "npm run build-webpack && webflow extension bundle",
     "watch-webpack": "webpack --config webpack.config.mjs --mode development --watch",
     "build-webpack": "webpack --config webpack.config.mjs --mode production",
@@ -31,6 +31,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "react-dom": "^18.2.0"

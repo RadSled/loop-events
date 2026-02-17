@@ -2,6 +2,8 @@
   "compilerOptions": {
     "outDir": "public",
     "target": "es6",
+    "module": "esnext",
+    "moduleResolution": "node",
     "lib": ["es6", "dom"],
     "typeRoots": ["./node_modules/@types", "./node_modules/@webflow"],
     "jsx": "react",
