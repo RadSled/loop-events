@@ -884,11 +884,22 @@ function isTransientRunReason(reason) {
   if (!msg) return false
   return (
     msg.includes("too many requests") ||
+    msg.includes(" 429") ||
+    msg.includes("error: 429") ||
     msg.includes("publish already in progress") ||
     msg.includes("retry in") ||
     msg.includes("rate limit") ||
     msg.includes("waiting for cms consistency")
   )
+}
+
+function parseRetryBackoffMs(reason) {
+  const msg = String(reason || "")
+  const m = msg.match(/retry\s+in\s+~?(\d+)\s*s/i)
+  const sec = m ? Number(m[1]) : 0
+  if (Number.isFinite(sec) && sec > 0) return sec * 1000
+  if (isTransientRunReason(msg)) return 15000
+  return 0
 }
 
 async function mapLimit(items, limit, worker) {
@@ -1123,7 +1134,7 @@ async function createItem(collectionId, fieldData, isDraft) {
 
 async function setItemsDraftState(collectionId, itemIds, isDraft) {
   const ids = Array.isArray(itemIds) ? itemIds.map((x) => String(x)).filter(Boolean) : []
-  await mapLimit(ids, 4, async (id) => {
+  await mapLimit(ids, 1, async (id) => {
     await webflowFetch(`/v2/collections/${collectionId}/items/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -2279,10 +2290,13 @@ app.post("/api/schedules/:id/retry", requireAuth, async (req, res) => {
       if (!run || run.ok !== true) {
         const reason = String(run && run.reason ? run.reason : "Schedule run failed")
         if (Boolean((run && run.transient) || isTransientRunReason(reason))) {
+          const backoffMs = parseRetryBackoffMs(reason)
           const updatedTransient = patchSchedule(scheduleId, {
             lastRunAt: Date.now(),
             lastRunStatus: "ok",
             lastRunMessage: reason,
+            errorStreak: 0,
+            lastTickAt: backoffMs ? Date.now() + Math.max(0, backoffMs - 10000) : Date.now(),
           }, { userId })
           return res.status(409).json({
             ok: false,
@@ -2345,10 +2359,13 @@ app.post("/api/schedules/:id/retry", requireAuth, async (req, res) => {
     } catch (err) {
       const reason = String(err && err.message ? err.message : err)
       if (isTransientRunReason(reason)) {
+        const backoffMs = parseRetryBackoffMs(reason)
         const updatedTransient = patchSchedule(scheduleId, {
           lastRunAt: Date.now(),
           lastRunStatus: "ok",
           lastRunMessage: reason,
+          errorStreak: 0,
+          lastTickAt: backoffMs ? Date.now() + Math.max(0, backoffMs - 10000) : Date.now(),
         }, { userId })
         return res.status(409).json({ ok: false, code: "TRANSIENT", error: reason, schedule: updatedTransient || null })
       }

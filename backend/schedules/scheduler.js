@@ -6,11 +6,22 @@ function isTransientReason(reason) {
   if (!msg) return false
   return (
     msg.includes("too many requests") ||
+    msg.includes(" 429") ||
+    msg.includes("error: 429") ||
     msg.includes("publish already in progress") ||
     msg.includes("retry in") ||
     msg.includes("rate limit") ||
     msg.includes("waiting for cms consistency")
   )
+}
+
+function parseRetryBackoffMs(reason) {
+  const msg = String(reason || "")
+  const m = msg.match(/retry\s+in\s+~?(\d+)\s*s/i)
+  const sec = m ? Number(m[1]) : 0
+  if (Number.isFinite(sec) && sec > 0) return sec * 1000
+  if (isTransientReason(msg)) return 15000
+  return 0
 }
 
 function startScheduler(deps) {
@@ -45,10 +56,13 @@ function startScheduler(deps) {
           const reason = String(res && res.reason ? res.reason : "Schedule run failed")
           const transient = Boolean((res && res.transient) || isTransientReason(reason))
           if (transient) {
+            const backoffMs = parseRetryBackoffMs(reason)
             patchSchedule(s.id, {
               lastRunAt: Date.now(),
               lastRunStatus: "ok",
               lastRunMessage: reason,
+              errorStreak: 0,
+              lastTickAt: backoffMs ? Date.now() + Math.max(0, backoffMs - 10000) : Date.now(),
             })
             console.log("[AutoRefill] transient run condition", s.id, reason)
             continue
@@ -101,10 +115,13 @@ function startScheduler(deps) {
       } catch (e) {
         const reason = String(e && e.message ? e.message : e)
         if (isTransientReason(reason)) {
+          const backoffMs = parseRetryBackoffMs(reason)
           patchSchedule(s.id, {
             lastRunAt: Date.now(),
             lastRunStatus: "ok",
             lastRunMessage: reason,
+            errorStreak: 0,
+            lastTickAt: backoffMs ? Date.now() + Math.max(0, backoffMs - 10000) : Date.now(),
           })
           console.log("[AutoRefill] transient schedule error", s.id, reason)
           continue

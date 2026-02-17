@@ -6,6 +6,8 @@ function isTransientReason(reason) {
   if (!msg) return false
   return (
     msg.includes("too many requests") ||
+    msg.includes(" 429") ||
+    msg.includes("error: 429") ||
     msg.includes("publish already in progress") ||
     msg.includes("retry in") ||
     msg.includes("rate limit")
