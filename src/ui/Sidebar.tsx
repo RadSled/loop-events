@@ -14,6 +14,8 @@ export default function Sidebar(props: {
   onReset: () => void
   planLabel?: "Free" | "Paid"
   scheduledCount?: number
+  onOpenPlans?: () => void
+  onOpenSchedules?: () => void
 }) {
   function openMenuNow(e?: React.SyntheticEvent) {
     if (e && typeof e.preventDefault === "function") e.preventDefault()
@@ -24,8 +26,30 @@ export default function Sidebar(props: {
     <aside className="le-sidebar">
       <div className="le-sb-top">
         <div className="le-sb-left le-sbSummary">
-          <span className={`le-sbPlanBadge ${(props.planLabel || "Free").toLowerCase()}`}>{props.planLabel || "Free"}</span>
-          <span className="le-sbStatChip">Scheduled {Math.max(0, Number(props.scheduledCount || 0))}</span>
+          <button
+            className={`le-sbPlanBadge ${(props.planLabel || "Free").toLowerCase()}`}
+            type="button"
+            onClick={() => props.onOpenPlans && props.onOpenPlans()}
+            aria-label="Open compare plans"
+            title="Compare plans"
+          >
+            {props.planLabel || "Free"}
+          </button>
+          <button
+            className="le-sbStatChip"
+            type="button"
+            onClick={() => props.onOpenSchedules && props.onOpenSchedules()}
+            aria-label="Open auto refill schedules"
+            title="Open auto refill schedules"
+          >
+            <span className="le-sbStatIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 12a7 7 0 0 1 11.9-4.95M19 12a7 7 0 0 1-11.9 4.95" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M16.8 3.9v3.2h-3.2M7.2 20.1v-3.2h3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            <span>{Math.max(0, Number(props.scheduledCount || 0))}</span>
+          </button>
         </div>
 
         <div className="le-sb-actions">

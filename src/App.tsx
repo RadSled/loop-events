@@ -510,6 +510,11 @@ function AuthenticatedApp(props: {
         onReset={le.resetAll}
         planLabel={planLabel}
         scheduledCount={le.schedules.length}
+        onOpenPlans={() => setComparePlansOpen(true)}
+        onOpenSchedules={() => {
+          le.setDrawerOpen(true)
+          le.setDrawerView("autoRefill")
+        }}
         unreadNotifications={notifications.filter((n) => !n.readAt).length}
         onOpenNotifications={() => {
           setNotificationOpen(true)
@@ -1220,9 +1225,10 @@ function AuthenticatedApp(props: {
                                               {rollingBackRunId === runId ? (
                                                 "..."
                                               ) : (
-                                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                                  <path d="M7 7v4h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                                  <path d="M7.2 11a6 6 0 1 0 1.6-4.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                  <path d="M13 3a9 9 0 1 0 6.37 2.63" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                                  <path d="M13 8v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                                  <path d="M20.5 2.5v5h-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                                                 </svg>
                                               )}
                                             </button>

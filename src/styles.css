@@ -5545,6 +5545,7 @@ textarea {
 .le-sbStatChip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   height: 24px;
   border-radius: 999px;
   padding: 0 10px;
@@ -5554,6 +5555,25 @@ textarea {
   border: 1px solid #d7e1f0;
   background: #f4f7fc;
   color: #3b4b65;
+  cursor: pointer;
+}
+
+.le-sbPlanBadge,
+.le-sbStatChip {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.le-sbPlanBadge:hover,
+.le-sbStatChip:hover {
+  border-color: #c4d1ea;
+  background: #f0f5fc;
+}
+
+.le-sbPlanBadge:focus-visible,
+.le-sbStatChip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(122, 129, 249, 0.2);
 }
 
 .le-sbPlanBadge.free {
@@ -5566,6 +5586,21 @@ textarea {
   border-color: #b9e2c8;
   background: #ebf8f0;
   color: #1f7b4b;
+}
+
+.le-sbStatChip svg {
+  color: #6b78f5;
+}
+
+.le-sbStatIcon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid #d2dcf1;
+  background: #ecf1ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Schedule details rows with separators */
@@ -5611,9 +5646,9 @@ textarea {
 }
 
 .le-detailsRunRollback {
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
   border-radius: 999px;
   border: 1px solid #bdccef;
   background: #edf3ff;
@@ -5626,6 +5661,11 @@ textarea {
 
 .le-detailsRunRollback svg {
   display: block;
+}
+
+.le-detailsRunRollback:not(:disabled):hover {
+  background: #e4ecff;
+  border-color: #aebee7;
 }
 
 .le-detailsHistoryState.is-source {
