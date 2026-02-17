@@ -1,5 +1,4 @@
 import React from "react"
-import LogoIcon from "./LogoIcon"
 
 type Step = 1 | 2 | 3 | 4 | 5
 
@@ -14,6 +13,7 @@ export default function Sidebar(props: {
   unreadNotifications?: number
   onReset: () => void
   planLabel?: "Free" | "Paid"
+  scheduledCount?: number
 }) {
   function openMenuNow(e?: React.SyntheticEvent) {
     if (e && typeof e.preventDefault === "function") e.preventDefault()
@@ -23,14 +23,9 @@ export default function Sidebar(props: {
   return (
     <aside className="le-sidebar">
       <div className="le-sb-top">
-        <div className="le-sb-left">
-          <div className="le-logo" aria-hidden="true">
-            <LogoIcon className="le-logoSvg" />
-          </div>
-          <div className="le-sb-title">
-            <div className={`le-sb-planText ${(props.planLabel || "Free").toLowerCase()}`}>{props.planLabel || "Free"}</div>
-            <div className="le-sb-name">Loop Events</div>
-          </div>
+        <div className="le-sb-left le-sbSummary">
+          <span className={`le-sbPlanBadge ${(props.planLabel || "Free").toLowerCase()}`}>{props.planLabel || "Free"}</span>
+          <span className="le-sbStatChip">Scheduled {Math.max(0, Number(props.scheduledCount || 0))}</span>
         </div>
 
         <div className="le-sb-actions">

@@ -509,6 +509,7 @@ function AuthenticatedApp(props: {
         }}
         onReset={le.resetAll}
         planLabel={planLabel}
+        scheduledCount={le.schedules.length}
         unreadNotifications={notifications.filter((n) => !n.readAt).length}
         onOpenNotifications={() => {
           setNotificationOpen(true)
@@ -1094,18 +1095,18 @@ function AuthenticatedApp(props: {
 
                           <div className="le-detailsSection">
                             <div className="le-detailsSectionTitle">Schedule settings</div>
-                            <div className="le-detailsKvs">
-                              <div className="le-detailsKv"><span>Repeat</span><strong>{s.repeatType}</strong></div>
-                              <div className="le-detailsKv"><span>Every</span><strong>{s.interval}</strong></div>
-                              <div className="le-detailsKv"><span>Copies</span><strong>{s.count}</strong></div>
-                              <div className="le-detailsKv"><span>Output status</span><strong>{outputLabel}</strong></div>
-                              <div className="le-detailsKv"><span>Old items</span><strong>{cleanupLabel}</strong></div>
+                            <div className="le-detailsList">
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Repeat:</strong><span className="le-detailsLineValue">{s.repeatType}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Every:</strong><span className="le-detailsLineValue">{s.interval}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Copies:</strong><span className="le-detailsLineValue">{s.count}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Output status:</strong><span className="le-detailsLineValue">{outputLabel}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Old items:</strong><span className="le-detailsLineValue">{cleanupLabel}</span></div>
                             </div>
                           </div>
 
                           <div className="le-detailsSection">
                             <div className="le-detailsSectionTitle">Context</div>
-                            <div className="le-detailsKvs">
+                            <div className="le-detailsList">
                               {(() => {
                                 const weekdaySetLabel = Object.entries(s.weekdaySet || {})
                                   .filter(([, on]) => Boolean(on))
@@ -1118,13 +1119,13 @@ function AuthenticatedApp(props: {
                                 const showNthWeekday = s.repeatType === "custom" && s.customRule === "nthWeekday"
                                 return (
                                   <>
-                              <div className="le-detailsKv"><span>Collection</span><strong>{s.collectionName}</strong></div>
-                              <div className="le-detailsKv"><span>Template</span><strong>{s.templateTitle}</strong></div>
-                              <div className="le-detailsKv le-detailsKv--wide"><span>Fields</span><strong>{s.startFieldName}{s.endFieldId ? ` -> ${s.endFieldName}` : ""}</strong></div>
-                              {showWeekdaySet ? <div className="le-detailsKv"><span>Weekday set</span><strong>{weekdaySetLabel || "-"}</strong></div> : null}
-                              {showCustomRule ? <div className="le-detailsKv"><span>Custom rule</span><strong>{s.customRule || "-"}</strong></div> : null}
+                                    <div className="le-detailsLine"><strong className="le-detailsLineLabel">Collection:</strong><span className="le-detailsLineValue">{s.collectionName}</span></div>
+                                    <div className="le-detailsLine"><strong className="le-detailsLineLabel">Template:</strong><span className="le-detailsLineValue">{s.templateTitle}</span></div>
+                                    <div className="le-detailsLine"><strong className="le-detailsLineLabel">Fields:</strong><span className="le-detailsLineValue">{s.startFieldName}{s.endFieldId ? ` -> ${s.endFieldName}` : ""}</span></div>
+                                    {showWeekdaySet ? <div className="le-detailsLine"><strong className="le-detailsLineLabel">Weekday set:</strong><span className="le-detailsLineValue">{weekdaySetLabel || "-"}</span></div> : null}
+                                    {showCustomRule ? <div className="le-detailsLine"><strong className="le-detailsLineLabel">Custom rule:</strong><span className="le-detailsLineValue">{s.customRule || "-"}</span></div> : null}
                               {showNthWeekday ? (
-                                <div className="le-detailsKv"><span>Nth / weekday</span><strong>{s.nth || "-"} / {Number.isFinite(Number(s.nthWeekday)) ? Number(s.nthWeekday) : "-"}</strong></div>
+                                      <div className="le-detailsLine"><strong className="le-detailsLineLabel">Nth / weekday:</strong><span className="le-detailsLineValue">{s.nth || "-"} / {Number.isFinite(Number(s.nthWeekday)) ? Number(s.nthWeekday) : "-"}</span></div>
                               ) : null}
                                   </>
                                 )
@@ -1134,15 +1135,15 @@ function AuthenticatedApp(props: {
 
                           <div className="le-detailsSection">
                             <div className="le-detailsSectionTitle">Health</div>
-                            <div className="le-detailsKvs">
-                              <div className="le-detailsKv"><span>Last run</span><strong>{s.lastRunStatus || "idle"}</strong></div>
-                              <div className="le-detailsKv"><span>Last message</span><strong>{s.lastRunMessage || "-"}</strong></div>
-                              <div className="le-detailsKv"><span>Paused</span><strong>{s.isPaused ? "Yes" : "No"}</strong></div>
-                              <div className="le-detailsKv"><span>Stopped</span><strong>{s.isStopped ? "Yes" : "No"}</strong></div>
-                              <div className="le-detailsKv"><span>Error streak</span><strong>{Number(s.errorStreak || 0)}</strong></div>
-                              <div className="le-detailsKv"><span>Last tick</span><strong>{s.lastTickAt ? new Date(s.lastTickAt).toLocaleString() : "-"}</strong></div>
-                              <div className="le-detailsKv"><span>Issued keys</span><strong>{Array.isArray(s.issuedStartKeys) ? s.issuedStartKeys.length : 0}</strong></div>
-                              <div className="le-detailsKv"><span>Last issued key</span><strong>{s.lastIssuedStartKey || "-"}</strong></div>
+                            <div className="le-detailsList">
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Last run:</strong><span className="le-detailsLineValue">{s.lastRunStatus || "idle"}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Last message:</strong><span className="le-detailsLineValue">{s.lastRunMessage || "-"}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Paused:</strong><span className="le-detailsLineValue">{s.isPaused ? "Yes" : "No"}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Stopped:</strong><span className="le-detailsLineValue">{s.isStopped ? "Yes" : "No"}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Error streak:</strong><span className="le-detailsLineValue">{Number(s.errorStreak || 0)}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Last tick:</strong><span className="le-detailsLineValue">{s.lastTickAt ? new Date(s.lastTickAt).toLocaleString() : "-"}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Issued keys:</strong><span className="le-detailsLineValue">{Array.isArray(s.issuedStartKeys) ? s.issuedStartKeys.length : 0}</span></div>
+                              <div className="le-detailsLine"><strong className="le-detailsLineLabel">Last issued key:</strong><span className="le-detailsLineValue">{s.lastIssuedStartKey || "-"}</span></div>
                             </div>
                           </div>
 
@@ -1193,12 +1194,6 @@ function AuthenticatedApp(props: {
                                       <div className="le-detailsHistoryRow" key={`${runId || "run"}-${idx}`}>
                                         <div className="le-detailsHistoryTop">
                                           <span className="le-detailsHistoryItem">{runTimeLabel}</span>
-                                        </div>
-                                        <div className="le-detailsHistoryPills">
-                                          <span className="le-detailsHistoryState is-source">{sourceLabel}</span>
-                                          <span className={`le-detailsHistoryState is-${String(run?.status || "ok")}`}>{run?.status || "ok"}</span>
-                                          <span className="le-detailsHistoryState">Created {Number(run?.createdCount || 0)} item(s)</span>
-                                          {run?.rolledBackAt ? <span className="le-detailsHistoryState">Rolled back</span> : null}
                                           {canRollback ? (
                                             <button
                                               className="le-detailsRunRollback"
@@ -1219,20 +1214,25 @@ function AuthenticatedApp(props: {
                                                   setRollingBackRunId(null)
                                                 })
                                               }}
+                                              aria-label="Rollback run"
+                                              title="Rollback run"
                                             >
                                               {rollingBackRunId === runId ? (
                                                 "..."
                                               ) : (
-                                                <>
-                                                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                                    <path d="M7 7v4h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                                    <path d="M7.2 11a6 6 0 1 0 1.6-4.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                                  </svg>
-                                                  <span>Rollback</span>
-                                                </>
+                                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                  <path d="M7 7v4h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                                  <path d="M7.2 11a6 6 0 1 0 1.6-4.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
                                               )}
                                             </button>
                                           ) : null}
+                                        </div>
+                                        <div className="le-detailsHistoryPills">
+                                          <span className="le-detailsHistoryState is-source">{sourceLabel}</span>
+                                          <span className={`le-detailsHistoryState is-${String(run?.status || "ok")}`}>{run?.status || "ok"}</span>
+                                          <span className="le-detailsHistoryState">Created {Number(run?.createdCount || 0)} item(s)</span>
+                                          {run?.rolledBackAt ? <span className="le-detailsHistoryState">Rolled back</span> : null}
                                         </div>
                                         <div className="le-detailsHistoryMeta">
                                           {run?.rolledBackAt ? <span>Rollback: {new Date(run.rolledBackAt).toLocaleString()}</span> : null}

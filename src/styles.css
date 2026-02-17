@@ -5533,3 +5533,110 @@ textarea {
   font-size: var(--fs-xs);
   color: var(--color-text-muted);
 }
+
+/* Sidebar header compact summary */
+.le-sbSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.le-sbPlanBadge,
+.le-sbStatChip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid #d7e1f0;
+  background: #f4f7fc;
+  color: #3b4b65;
+}
+
+.le-sbPlanBadge.free {
+  border-color: #d9dfea;
+  background: #f4f6fb;
+  color: #47556d;
+}
+
+.le-sbPlanBadge.paid {
+  border-color: #b9e2c8;
+  background: #ebf8f0;
+  color: #1f7b4b;
+}
+
+/* Schedule details rows with separators */
+.le-detailsSection {
+  padding: 10px 12px;
+}
+
+.le-detailsList {
+  display: grid;
+  gap: 0;
+}
+
+.le-detailsLine {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(11, 18, 32, 0.1);
+}
+
+.le-detailsLine:last-child {
+  border-bottom: 0;
+}
+
+.le-detailsLineLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5f6f88;
+}
+
+.le-detailsLineValue {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2937;
+  overflow-wrap: anywhere;
+}
+
+/* Run history compact title actions */
+.le-detailsHistoryTop {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.le-detailsRunRollback {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid #bdccef;
+  background: #edf3ff;
+  color: #4056b4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.le-detailsRunRollback svg {
+  display: block;
+}
+
+.le-detailsHistoryState.is-source {
+  border-color: #d9e2f2;
+  background: #f2f6fd;
+  color: #45556f;
+}
+
+@media (max-width: 767px) {
+  .le-detailsLine {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+}
