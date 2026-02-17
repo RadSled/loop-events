@@ -24,7 +24,7 @@ export default function Sidebar(props: {
 
   return (
     <aside className="le-sidebar">
-      <div className="le-sb-top">
+      <div className="le-sb-top le-sb-top--plain">
         <div className="le-sb-left le-sbSummary">
           <button
             className={`le-sbPlanBadge ${(props.planLabel || "Free").toLowerCase()}`}

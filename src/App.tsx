@@ -1225,6 +1225,7 @@ function AuthenticatedApp(props: {
                                               }}
                                               aria-label="Rollback run"
                                               title="Rollback run"
+                                              data-tooltip="Rollback run"
                                             >
                                               {rollingBackRunId === runId ? (
                                                 "..."
