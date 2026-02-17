@@ -1,6 +1,18 @@
 const { loadSchedules, patchSchedule } = require("./store")
 const { runSchedule } = require("./worker")
 
+function isTransientReason(reason) {
+  const msg = String(reason || "").toLowerCase()
+  if (!msg) return false
+  return (
+    msg.includes("too many requests") ||
+    msg.includes("publish already in progress") ||
+    msg.includes("retry in") ||
+    msg.includes("rate limit") ||
+    msg.includes("waiting for cms consistency")
+  )
+}
+
 function startScheduler(deps) {
   console.log("[AutoRefill] scheduler started")
   const inFlight = new Set()
@@ -31,6 +43,16 @@ function startScheduler(deps) {
         const res = await runSchedule(s, deps)
         if (!res || res.ok !== true) {
           const reason = String(res && res.reason ? res.reason : "Schedule run failed")
+          const transient = Boolean((res && res.transient) || isTransientReason(reason))
+          if (transient) {
+            patchSchedule(s.id, {
+              lastRunAt: Date.now(),
+              lastRunStatus: "ok",
+              lastRunMessage: reason,
+            })
+            console.log("[AutoRefill] transient run condition", s.id, reason)
+            continue
+          }
           const nextErrorStreak = Number(s.errorStreak || 0) + 1
           const fatalTemplateMissing = /template item not found/i.test(reason)
           const shouldPause = fatalTemplateMissing || nextErrorStreak >= 5
@@ -78,6 +100,15 @@ function startScheduler(deps) {
         }
       } catch (e) {
         const reason = String(e && e.message ? e.message : e)
+        if (isTransientReason(reason)) {
+          patchSchedule(s.id, {
+            lastRunAt: Date.now(),
+            lastRunStatus: "ok",
+            lastRunMessage: reason,
+          })
+          console.log("[AutoRefill] transient schedule error", s.id, reason)
+          continue
+        }
         const nextErrorStreak = Number(s.errorStreak || 0) + 1
         const shouldPause = nextErrorStreak >= 5
         patchSchedule(s.id, {

@@ -879,6 +879,18 @@ function isTooManyRequestsError(err) {
   return msg.includes("too many requests") || msg.includes("429")
 }
 
+function isTransientRunReason(reason) {
+  const msg = String(reason || "").toLowerCase()
+  if (!msg) return false
+  return (
+    msg.includes("too many requests") ||
+    msg.includes("publish already in progress") ||
+    msg.includes("retry in") ||
+    msg.includes("rate limit") ||
+    msg.includes("waiting for cms consistency")
+  )
+}
+
 async function mapLimit(items, limit, worker) {
   const list = Array.isArray(items) ? items : []
   const max = Math.max(1, Number(limit) || 1)
@@ -1254,7 +1266,7 @@ async function createFromStarts(args) {
     }
   }
 
-  const createResults = await mapLimit(startList, 4, async (startISO, i) => {
+  const createResults = await mapLimit(startList, 1, async (startISO, i) => {
     const safeStartISO = String(startISO || "")
     if (!safeStartISO) return { ok: false, idx: i, err: "Missing start date" }
 
@@ -1412,7 +1424,7 @@ async function createCopiesFromTemplate(args) {
     }
   }
 
-  const createResults = await mapLimit(nextStarts, 4, async (start, i) => {
+  const createResults = await mapLimit(nextStarts, 1, async (start, i) => {
     const fdBase = cloneFieldData(templateItem.fieldData)
     const startOut = effectiveStartHasTime
       ? wallToUtcIso(start, schedule.siteTimezone || "UTC")
@@ -2266,6 +2278,19 @@ app.post("/api/schedules/:id/retry", requireAuth, async (req, res) => {
       const run = await runSchedule(schedule, schedulerDeps)
       if (!run || run.ok !== true) {
         const reason = String(run && run.reason ? run.reason : "Schedule run failed")
+        if (Boolean((run && run.transient) || isTransientRunReason(reason))) {
+          const updatedTransient = patchSchedule(scheduleId, {
+            lastRunAt: Date.now(),
+            lastRunStatus: "ok",
+            lastRunMessage: reason,
+          }, { userId })
+          return res.status(409).json({
+            ok: false,
+            code: "TRANSIENT",
+            error: reason,
+            schedule: updatedTransient || null,
+          })
+        }
         const nextErrorStreak = Number(schedule.errorStreak || 0) + 1
         const fatalTemplateMissing = /template item not found/i.test(reason)
         const shouldPause = fatalTemplateMissing || nextErrorStreak >= 5
@@ -2319,6 +2344,14 @@ app.post("/api/schedules/:id/retry", requireAuth, async (req, res) => {
       })
     } catch (err) {
       const reason = String(err && err.message ? err.message : err)
+      if (isTransientRunReason(reason)) {
+        const updatedTransient = patchSchedule(scheduleId, {
+          lastRunAt: Date.now(),
+          lastRunStatus: "ok",
+          lastRunMessage: reason,
+        }, { userId })
+        return res.status(409).json({ ok: false, code: "TRANSIENT", error: reason, schedule: updatedTransient || null })
+      }
       const nextErrorStreak = Number(schedule.errorStreak || 0) + 1
       const shouldPause = nextErrorStreak >= 5
       const updated = patchSchedule(scheduleId, {

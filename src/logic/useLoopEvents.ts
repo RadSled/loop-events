@@ -1200,6 +1200,12 @@ export function useLoopEvents(authToken?: string) {
         })
       }
       if (!res.ok) {
+        if (String((data as any)?.code || "") === "TRANSIENT") {
+          return {
+            ok: true,
+            message: String((data as any)?.error || "Run deferred. Please retry shortly."),
+          }
+        }
         return {
           ok: false,
           error: String((data as any)?.error || "Retry failed"),

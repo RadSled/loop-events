@@ -90,6 +90,23 @@ export default function Step5(props: { le: any }) {
         <div className="le-reviewDivider" />
 
         <div className="le-reviewRow">
+          <div className="le-reviewTitle">Start</div>
+          <div className="le-reviewValue">{le.formatISO(le.startISO, Boolean(le.startWantsTime))}</div>
+        </div>
+
+        {le.endFieldId ? (
+          <>
+            <div className="le-reviewDivider" />
+            <div className="le-reviewRow">
+              <div className="le-reviewTitle">End</div>
+              <div className="le-reviewValue">{le.formatISO(le.endISO, Boolean(le.endWantsTime))}</div>
+            </div>
+          </>
+        ) : null}
+
+        <div className="le-reviewDivider" />
+
+        <div className="le-reviewRow">
           <div className="le-reviewTitle">Copies ({previewStarts.length})</div>
           <div className="le-reviewValue">
             <div className={`le-copiesScroll ${previewStarts.length > 10 ? "is-scroll" : ""}`}>
@@ -108,23 +125,6 @@ export default function Step5(props: { le: any }) {
             </div>
           </div>
         </div>
-
-        <div className="le-reviewDivider" />
-
-        <div className="le-reviewRow">
-          <div className="le-reviewTitle">Start</div>
-          <div className="le-reviewValue">{le.formatISO(le.startISO, Boolean(le.startWantsTime))}</div>
-        </div>
-
-        {le.endFieldId ? (
-          <>
-            <div className="le-reviewDivider" />
-            <div className="le-reviewRow">
-              <div className="le-reviewTitle">End</div>
-              <div className="le-reviewValue">{le.formatISO(le.endISO, Boolean(le.endWantsTime))}</div>
-            </div>
-          </>
-        ) : null}
 
         <div className="le-reviewDivider" />
 

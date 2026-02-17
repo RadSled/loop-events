@@ -1,6 +1,17 @@
 const { isTodayOrFutureStart } = require("./time")
 const { patchSchedule } = require("./store")
 
+function isTransientReason(reason) {
+  const msg = String(reason || "").toLowerCase()
+  if (!msg) return false
+  return (
+    msg.includes("too many requests") ||
+    msg.includes("publish already in progress") ||
+    msg.includes("retry in") ||
+    msg.includes("rate limit")
+  )
+}
+
 async function runSchedule(schedule, deps) {
   const webflow = deps && deps.webflow
   if (!webflow) throw new Error("Missing deps.webflow")
@@ -63,6 +74,19 @@ async function runSchedule(schedule, deps) {
   const trackedItems = trackedIds.length ? await getItemsByIds(schedule.collectionId, trackedIds) : []
   const trackedFoundIds = new Set(trackedItems.map((it) => String(it && it.id ? it.id : "")).filter(Boolean))
   let prunedTrackedIds = trackedIds.filter((id) => trackedFoundIds.has(String(id)))
+  const scheduleAgeMs = Math.max(0, Date.now() - Number(schedule.createdAt || 0))
+  const missingTrackedCount = Math.max(0, trackedIds.length - trackedFoundIds.size)
+  if (trackedIds.length && missingTrackedCount > 0 && scheduleAgeMs < 120000) {
+    return {
+      ok: true,
+      created: 0,
+      have: Math.max(trackedFoundIds.size, trackedIds.length),
+      want: schedule.count,
+      startHasTime,
+      transient: true,
+      reason: "Waiting for CMS consistency before next refill",
+    }
+  }
   const historyBase = Array.isArray(schedule.history) ? schedule.history.slice(-1000) : []
   const historyAdds = []
 
@@ -252,13 +276,15 @@ async function runSchedule(schedule, deps) {
   })
 
   if (created && created.publishError) {
+    const reason = String(created.publishError)
     return {
       ok: false,
-      reason: String(created.publishError),
+      reason,
       created: 0,
       have,
       want,
       startHasTime,
+      transient: isTransientReason(reason),
     }
   }
 
