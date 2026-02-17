@@ -1090,7 +1090,7 @@ function AuthenticatedApp(props: {
                             <span className="le-modalThumb">
                               {s.templateThumbnailUrl ? <img src={s.templateThumbnailUrl} alt="" loading="lazy" /> : <span aria-hidden="true">◌</span>}
                             </span>
-                            <span>{s.templateTitle}</span>
+                            <span className="le-detailsScheduleName">{s.templateTitle}</span>
                           </div>
 
                           <div className="le-detailsSection">
@@ -1101,20 +1101,35 @@ function AuthenticatedApp(props: {
                               <div className="le-detailsKv"><span>Copies</span><strong>{s.count}</strong></div>
                               <div className="le-detailsKv"><span>Output status</span><strong>{outputLabel}</strong></div>
                               <div className="le-detailsKv"><span>Old items</span><strong>{cleanupLabel}</strong></div>
-                              <div className="le-detailsKv"><span>Auto refill</span><strong>Every 10 seconds</strong></div>
                             </div>
                           </div>
 
                           <div className="le-detailsSection">
                             <div className="le-detailsSectionTitle">Context</div>
                             <div className="le-detailsKvs">
+                              {(() => {
+                                const weekdaySetLabel = Object.entries(s.weekdaySet || {})
+                                  .filter(([, on]) => Boolean(on))
+                                  .map(([k]) => k)
+                                  .join(", ")
+                                const showWeekdaySet =
+                                  s.repeatType === "weekly" ||
+                                  (s.repeatType === "custom" && (s.customRule === "weekdays" || s.customRule === "weekends"))
+                                const showCustomRule = s.repeatType === "custom"
+                                const showNthWeekday = s.repeatType === "custom" && s.customRule === "nthWeekday"
+                                return (
+                                  <>
                               <div className="le-detailsKv"><span>Collection</span><strong>{s.collectionName}</strong></div>
                               <div className="le-detailsKv"><span>Template</span><strong>{s.templateTitle}</strong></div>
-                              <div className="le-detailsKv"><span>Fields</span><strong>{s.startFieldName}{s.endFieldId ? ` -> ${s.endFieldName}` : ""}</strong></div>
-                              <div className="le-detailsKv"><span>Weekday set</span><strong>{Object.entries(s.weekdaySet || {}).filter(([, on]) => Boolean(on)).map(([k]) => k).join(", ") || "-"}</strong></div>
-                              <div className="le-detailsKv"><span>Custom rule</span><strong>{s.customRule || "-"}</strong></div>
-                              <div className="le-detailsKv"><span>Nth / weekday</span><strong>{s.nth || "-"} / {Number.isFinite(Number(s.nthWeekday)) ? Number(s.nthWeekday) : "-"}</strong></div>
-                              <div className="le-detailsKv"><span>Created total</span><strong>{s.createdCount}</strong></div>
+                              <div className="le-detailsKv le-detailsKv--wide"><span>Fields</span><strong>{s.startFieldName}{s.endFieldId ? ` -> ${s.endFieldName}` : ""}</strong></div>
+                              {showWeekdaySet ? <div className="le-detailsKv"><span>Weekday set</span><strong>{weekdaySetLabel || "-"}</strong></div> : null}
+                              {showCustomRule ? <div className="le-detailsKv"><span>Custom rule</span><strong>{s.customRule || "-"}</strong></div> : null}
+                              {showNthWeekday ? (
+                                <div className="le-detailsKv"><span>Nth / weekday</span><strong>{s.nth || "-"} / {Number.isFinite(Number(s.nthWeekday)) ? Number(s.nthWeekday) : "-"}</strong></div>
+                              ) : null}
+                                  </>
+                                )
+                              })()}
                             </div>
                           </div>
 
@@ -1173,46 +1188,47 @@ function AuthenticatedApp(props: {
                                     const runId = String(run?.runId || "")
                                     const canRollback = !run?.rolledBackAt && Number(run?.createdCount || 0) > 0
                                     const disabled = !runId || !canRollback || rollingBackRunId === runId
+                                    const sourceLabel = String(run?.source || "") === "manual" ? "Initial run" : "Auto-refill"
                                     return (
                                       <div className="le-detailsHistoryRow" key={`${runId || "run"}-${idx}`}>
                                         <div className="le-detailsHistoryTop">
-                                          <span className="le-detailsHistoryItem">{run?.source || "manual"} run</span>
+                                          <span className="le-detailsHistoryItem">{sourceLabel}</span>
                                           <span>{run?.createdAt ? new Date(run.createdAt).toLocaleString() : "-"}</span>
                                         </div>
                                         <div className="le-detailsHistoryPills">
                                           <span className={`le-detailsHistoryState is-${String(run?.status || "ok")}`}>{run?.status || "ok"}</span>
                                           <span className="le-detailsHistoryState">Created {Number(run?.createdCount || 0)} item(s)</span>
                                           {run?.rolledBackAt ? <span className="le-detailsHistoryState">Rolled back</span> : null}
+                                          {canRollback ? (
+                                            <button
+                                              className="le-detailsRunRollback"
+                                              type="button"
+                                              disabled={disabled}
+                                              onClick={() => {
+                                                if (!runId || !s.id) return
+                                                const yes = window.confirm("Rollback this run? This removes items created by this run.")
+                                                if (!yes) return
+                                                setRollbackStatus("")
+                                                setRollingBackRunId(runId)
+                                                void le.rollbackScheduleRun(String(s.id), runId).then((out: any) => {
+                                                  if (!out?.ok) {
+                                                    setRollbackStatus(String(out?.error || "Rollback failed"))
+                                                  } else {
+                                                    setRollbackStatus(String(out?.message || "Rollback complete"))
+                                                  }
+                                                  setRollingBackRunId(null)
+                                                })
+                                              }}
+                                            >
+                                              {rollingBackRunId === runId ? "Rolling back..." : "Rollback"}
+                                            </button>
+                                          ) : null}
                                         </div>
                                         <div className="le-detailsHistoryMeta">
                                           {run?.rolledBackAt ? <span>Rollback: {new Date(run.rolledBackAt).toLocaleString()}</span> : null}
                                           {run?.warning ? <span>{String(run.warning)}</span> : null}
                                           {run?.error ? <span>{String(run.error)}</span> : null}
                                           {run?.rollbackError ? <span>{String(run.rollbackError)}</span> : null}
-                                        </div>
-                                        <div className="le-detailsHistoryActions">
-                                          <button
-                                            className="le-btn ghost"
-                                            type="button"
-                                            disabled={disabled}
-                                            onClick={() => {
-                                              if (!runId || !s.id) return
-                                              const yes = window.confirm("Rollback this run? This removes items created by this run.")
-                                              if (!yes) return
-                                              setRollbackStatus("")
-                                              setRollingBackRunId(runId)
-                                              void le.rollbackScheduleRun(String(s.id), runId).then((out: any) => {
-                                                if (!out?.ok) {
-                                                  setRollbackStatus(String(out?.error || "Rollback failed"))
-                                                } else {
-                                                  setRollbackStatus(String(out?.message || "Rollback complete"))
-                                                }
-                                                setRollingBackRunId(null)
-                                              })
-                                            }}
-                                          >
-                                            {rollingBackRunId === runId ? "Rolling back..." : "Rollback run"}
-                                          </button>
                                         </div>
                                       </div>
                                     )
