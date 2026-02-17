@@ -510,7 +510,11 @@ function AuthenticatedApp(props: {
         onReset={le.resetAll}
         planLabel={planLabel}
         scheduledCount={le.schedules.length}
-        onOpenPlans={() => setComparePlansOpen(true)}
+        onOpenPlans={() => {
+          le.setDrawerOpen(true)
+          le.setDrawerView("menu")
+          setComparePlansOpen(true)
+        }}
         onOpenSchedules={() => {
           le.setDrawerOpen(true)
           le.setDrawerView("autoRefill")

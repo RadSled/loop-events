@@ -5548,7 +5548,7 @@ textarea {
   gap: 6px;
   height: 24px;
   border-radius: 999px;
-  padding: 0 10px;
+  padding: 0 9px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -5593,14 +5593,19 @@ textarea {
 }
 
 .le-sbStatIcon {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   border-radius: 999px;
   border: 1px solid #d2dcf1;
   background: #ecf1ff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.le-sbStatChip {
+  padding-left: 7px;
+  padding-right: 9px;
 }
 
 /* Schedule details rows with separators */
