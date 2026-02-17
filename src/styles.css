@@ -5673,44 +5673,6 @@ textarea {
   border-color: #aebee7;
 }
 
-.le-detailsRunRollback[data-tooltip] {
-  position: relative;
-}
-
-.le-detailsRunRollback[data-tooltip]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  right: 0;
-  top: -28px;
-  padding: 3px 7px;
-  border-radius: 6px;
-  border: 1px solid #d6deed;
-  background: #ffffff;
-  color: #334155;
-  font-size: 10px;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
-  opacity: 0;
-  transform: translateY(2px);
-  pointer-events: none;
-  transition: opacity 120ms ease, transform 120ms ease;
-}
-
-.le-detailsRunRollback[data-tooltip]:hover::after,
-.le-detailsRunRollback[data-tooltip]:focus-visible::after {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Top-nav wrapper: plain mode (easy revert by removing class) */
-.le-sb-top.le-sb-top--plain {
-  padding: 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
-
 .le-detailsHistoryState.is-source {
   border-color: #d9e2f2;
   background: #f2f6fd;

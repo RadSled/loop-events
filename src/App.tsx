@@ -13,6 +13,7 @@ import AuthScreen from "./ui/AuthScreen"
 import AutoRefillEditModal from "./ui/AutoRefillEditModal"
 import LogoIcon from "./ui/LogoIcon"
 import Sidebar from "./ui/Sidebar"
+import TooltipIconButton from "./ui/TooltipIconButton"
 import Step1 from "./ui/Step1"
 import Step2 from "./ui/Step2"
 import Step3 from "./ui/Step3"
@@ -1204,9 +1205,9 @@ function AuthenticatedApp(props: {
                                         <div className="le-detailsHistoryTop">
                                           <span className="le-detailsHistoryItem">{runTimeLabel}</span>
                                           {canRollback ? (
-                                            <button
+                                            <TooltipIconButton
                                               className="le-detailsRunRollback"
-                                              type="button"
+                                              label="Rollback run"
                                               disabled={disabled}
                                               onClick={() => {
                                                 if (!runId || !s.id) return
@@ -1223,9 +1224,6 @@ function AuthenticatedApp(props: {
                                                   setRollingBackRunId(null)
                                                 })
                                               }}
-                                              aria-label="Rollback run"
-                                              title="Rollback run"
-                                              data-tooltip="Rollback run"
                                             >
                                               {rollingBackRunId === runId ? (
                                                 "..."
@@ -1236,7 +1234,7 @@ function AuthenticatedApp(props: {
                                                   <path d="M20.5 2.5v5h-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                                                 </svg>
                                               )}
-                                            </button>
+                                            </TooltipIconButton>
                                           ) : null}
                                         </div>
                                         <div className="le-detailsHistoryPills">
