@@ -231,24 +231,27 @@ async function runSchedule(schedule, deps) {
     String(schedule.lastIssuedStartKey || "") !== String(lastIssuedStartKey || "")
 
   if (!missing) {
+    const shouldSaveRun = historyAdds.length > 0
     const now = Date.now()
     const runsBase = Array.isArray(schedule.runs) ? schedule.runs : []
-    const runEntry = {
-      runId: `run_${now}_${Math.random().toString(16).slice(2, 10)}`,
-      source: "refill",
-      status: "ok",
-      createdAt: now,
-      finishedAt: now,
-      createdCount: 0,
-      warning: "",
-      error: "",
-      createdItemIds: [],
-      createdStartKeys: [],
-      rolledBackAt: null,
-      rollbackDeletedCount: 0,
-      rollbackFailedCount: 0,
-      rollbackError: "",
-    }
+    const runEntry = shouldSaveRun
+      ? {
+          runId: `run_${now}_${Math.random().toString(16).slice(2, 10)}`,
+          source: "refill",
+          status: "ok",
+          createdAt: now,
+          finishedAt: now,
+          createdCount: 0,
+          warning: "",
+          error: "",
+          createdItemIds: [],
+          createdStartKeys: [],
+          rolledBackAt: null,
+          rollbackDeletedCount: 0,
+          rollbackFailedCount: 0,
+          rollbackError: "",
+        }
+      : null
     if (idsChanged || issuedChanged || historyAdds.length) {
       const mergedHistory = [...historyBase, ...historyAdds].slice(-1000)
       patchSchedule(schedule.id, {
@@ -256,9 +259,9 @@ async function runSchedule(schedule, deps) {
         issuedStartKeys,
         lastIssuedStartKey,
         history: mergedHistory,
-        runs: [...runsBase, runEntry].slice(-100),
+        runs: runEntry ? [...runsBase, runEntry].slice(-100) : runsBase,
       })
-    } else {
+    } else if (runEntry) {
       patchSchedule(schedule.id, {
         runs: [...runsBase, runEntry].slice(-100),
       })

@@ -79,6 +79,28 @@ function sanitizeRunEntry(v) {
   }
 }
 
+function isMeaningfulRunEntry(run) {
+  const x = isObject(run) ? run : {}
+  const createdCount = Math.max(0, ensureNum(x.createdCount, 0))
+  const rollbackDeletedCount = Math.max(0, ensureNum(x.rollbackDeletedCount, 0))
+  const rollbackFailedCount = Math.max(0, ensureNum(x.rollbackFailedCount, 0))
+  const createdItemIds = Array.isArray(x.createdItemIds) ? x.createdItemIds.map((id) => String(id || "")).filter(Boolean) : []
+  const warning = ensureStr(x.warning, "")
+  const error = ensureStr(x.error, "")
+  const rollbackError = ensureStr(x.rollbackError, "")
+  const rolledBackAt = x.rolledBackAt ? ensureNum(x.rolledBackAt, 0) : 0
+  return (
+    createdCount > 0 ||
+    createdItemIds.length > 0 ||
+    rollbackDeletedCount > 0 ||
+    rollbackFailedCount > 0 ||
+    rolledBackAt > 0 ||
+    Boolean(warning) ||
+    Boolean(error) ||
+    Boolean(rollbackError)
+  )
+}
+
 function sanitizeSchedule(input) {
   const s = isObject(input) ? input : {}
 
@@ -135,7 +157,7 @@ function sanitizeSchedule(input) {
       ? s.history.map(sanitizeHistoryEntry).filter(Boolean)
       : [],
     runs: Array.isArray(s.runs)
-      ? s.runs.map(sanitizeRunEntry).filter(Boolean).slice(-100)
+      ? s.runs.map(sanitizeRunEntry).filter((x) => Boolean(x) && isMeaningfulRunEntry(x)).slice(-100)
       : [],
   }
 

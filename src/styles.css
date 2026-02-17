@@ -3639,6 +3639,8 @@ button:disabled,
 .le-detailsHistoryState.is-unpublished { border-color: #f4d2a9; background: #fff6ea; color: #a16207; }
 .le-detailsHistoryState.is-archived { border-color: #d6ddeb; background: #f4f7fb; color: #556176; }
 .le-detailsHistoryState.is-deleted { border-color: #f1c0c0; background: #fff2f2; color: #b93b3b; }
+.le-detailsHistoryState.is-ok { border-color: #b9e3cb; background: #ecfaf2; color: #1e7f48; }
+.le-detailsHistoryState.is-error { border-color: #f1c0c0; background: #fff2f2; color: #b93b3b; }
 
 .le-detailsHistoryMeta {
   margin-top: 6px;
@@ -3647,6 +3649,12 @@ button:disabled,
   gap: 8px;
   font-size: 9.5px;
   color: #77849a;
+}
+
+.le-detailsHistoryActions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 @media (max-width: 767px) {

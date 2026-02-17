@@ -838,7 +838,6 @@ function AuthenticatedApp(props: {
                           : s.cleanupMode === "unpublish"
                           ? "Unpublish old"
                           : "Keep old"
-
                       return (
                         <div className="le-schedCard" key={s.id}>
                           <div className="le-schedTop">
@@ -1044,6 +1043,28 @@ function AuthenticatedApp(props: {
                         : s.cleanupMode === "unpublish"
                         ? "Unpublish old items"
                         : "Keep old items"
+                    const runEntries = (Array.isArray(s.runs) ? s.runs : [])
+                      .filter((run: any) => {
+                        const createdCount = Number(run?.createdCount || 0)
+                        const createdIds = Array.isArray(run?.createdItemIds) ? run.createdItemIds : []
+                        const rollbackDeleted = Number(run?.rollbackDeletedCount || 0)
+                        const rollbackFailed = Number(run?.rollbackFailedCount || 0)
+                        const warning = String(run?.warning || "").trim()
+                        const error = String(run?.error || "").trim()
+                        const rollbackError = String(run?.rollbackError || "").trim()
+                        return (
+                          createdCount > 0 ||
+                          createdIds.length > 0 ||
+                          rollbackDeleted > 0 ||
+                          rollbackFailed > 0 ||
+                          Boolean(run?.rolledBackAt) ||
+                          Boolean(warning) ||
+                          Boolean(error) ||
+                          Boolean(rollbackError)
+                        )
+                      })
+                      .slice(-30)
+                      .reverse()
 
                       return createPortal(
                         <>
@@ -1145,15 +1166,13 @@ function AuthenticatedApp(props: {
                           </div>
 
                           <div className="le-detailsHistoryWrap" style={{ marginTop: 10 }}>
-                            <div className="le-modalTitle">Run history ({Array.isArray(s.runs) ? s.runs.length : 0})</div>
-                            {Array.isArray(s.runs) && s.runs.length > 0 ? (
+                            <div className="le-modalTitle">Run history ({runEntries.length})</div>
+                            {runEntries.length > 0 ? (
                               <div className="le-detailsHistoryList">
-                                {[...s.runs]
-                                  .slice(-60)
-                                  .reverse()
-                                  .map((run: any, idx: number) => {
+                                {runEntries.map((run: any, idx: number) => {
                                     const runId = String(run?.runId || "")
-                                    const disabled = !runId || Boolean(run?.rolledBackAt) || rollingBackRunId === runId
+                                    const canRollback = !run?.rolledBackAt && Number(run?.createdCount || 0) > 0
+                                    const disabled = !runId || !canRollback || rollingBackRunId === runId
                                     return (
                                       <div className="le-detailsHistoryRow" key={`${runId || "run"}-${idx}`}>
                                         <div className="le-detailsHistoryTop">
@@ -1162,18 +1181,16 @@ function AuthenticatedApp(props: {
                                         </div>
                                         <div className="le-detailsHistoryPills">
                                           <span className={`le-detailsHistoryState is-${String(run?.status || "ok")}`}>{run?.status || "ok"}</span>
-                                          <span className="le-detailsHistoryState">Created {Number(run?.createdCount || 0)}</span>
+                                          <span className="le-detailsHistoryState">Created {Number(run?.createdCount || 0)} item(s)</span>
                                           {run?.rolledBackAt ? <span className="le-detailsHistoryState">Rolled back</span> : null}
                                         </div>
                                         <div className="le-detailsHistoryMeta">
-                                          <span>Run: {runId || "-"}</span>
-                                          <span>
-                                            {run?.rolledBackAt
-                                              ? `Rollback: ${new Date(run.rolledBackAt).toLocaleString()}`
-                                              : "Rollback available"}
-                                          </span>
+                                          {run?.rolledBackAt ? <span>Rollback: {new Date(run.rolledBackAt).toLocaleString()}</span> : null}
+                                          {run?.warning ? <span>{String(run.warning)}</span> : null}
+                                          {run?.error ? <span>{String(run.error)}</span> : null}
+                                          {run?.rollbackError ? <span>{String(run.rollbackError)}</span> : null}
                                         </div>
-                                        <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+                                        <div className="le-detailsHistoryActions">
                                           <button
                                             className="le-btn ghost"
                                             type="button"
