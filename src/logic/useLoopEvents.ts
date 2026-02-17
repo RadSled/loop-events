@@ -111,6 +111,22 @@ export type AutoRefillSchedule = {
     createdAt: number
     outputMode: string
   }>
+  runs?: Array<{
+    runId: string
+    source: string
+    status: string
+    createdAt: number
+    finishedAt: number
+    createdCount: number
+    warning: string
+    error: string
+    createdItemIds: string[]
+    createdStartKeys: string[]
+    rolledBackAt: number | null
+    rollbackDeletedCount: number
+    rollbackFailedCount: number
+    rollbackError: string
+  }>
 }
 
 declare global {
@@ -186,6 +202,13 @@ function extractImageUrl(raw: any): string {
   }
 
   return ""
+}
+
+function createRunId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `run_${crypto.randomUUID()}`
+  }
+  return `run_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`
 }
 
 function scoreImageField(keyRaw: string): number {
@@ -944,6 +967,23 @@ export function useLoopEvents(authToken?: string) {
       outputMode,
     }))
 
+    const runEntry = {
+      runId: createRunId(),
+      source: "manual",
+      status: "ok",
+      createdAt: now,
+      finishedAt: now,
+      createdCount: Math.max(0, createdCount),
+      warning: "",
+      error: "",
+      createdItemIds: Array.isArray(createdItemIds) ? createdItemIds : [],
+      createdStartKeys: Array.isArray(createdStartKeys) ? createdStartKeys : [],
+      rolledBackAt: null,
+      rollbackDeletedCount: 0,
+      rollbackFailedCount: 0,
+      rollbackError: "",
+    }
+
     return {
       id: `sched_${Math.random().toString(16).slice(2)}_${Date.now()}`,
       createdAt: Date.now(),
@@ -988,6 +1028,7 @@ export function useLoopEvents(authToken?: string) {
       issuedStartKeys: Array.isArray(createdStartKeys) ? createdStartKeys : [],
       lastIssuedStartKey: Array.isArray(createdStartKeys) && createdStartKeys.length ? createdStartKeys[createdStartKeys.length - 1] : "",
       history,
+      runs: [runEntry],
     }
   }
 
@@ -1171,6 +1212,46 @@ export function useLoopEvents(authToken?: string) {
     }
   }
 
+  async function rollbackScheduleRun(
+    scheduleId: string,
+    runId: string
+  ): Promise<{ ok: boolean; error?: string; message?: string; deletedCount?: number; failedCount?: number }> {
+    const safeScheduleId = String(scheduleId || "").trim()
+    const safeRunId = String(runId || "").trim()
+    if (!safeScheduleId || !safeRunId) return { ok: false, error: "Missing schedule or run id" }
+
+    try {
+      const res = await fetch(apiUrl(`/api/schedules/${encodeURIComponent(safeScheduleId)}/runs/${encodeURIComponent(safeRunId)}/rollback`), {
+        method: "POST",
+        headers: { ...authHeaders(authToken) },
+      })
+      const data = await safeJson(res)
+      const updated = (data as any)?.schedule
+      if (updated && typeof updated === "object") {
+        setSchedules((prev) => {
+          const list = Array.isArray(prev) ? prev : []
+          return list.map((s) => (s.id === safeScheduleId ? { ...s, ...updated } : s))
+        })
+      }
+
+      if (!res.ok) {
+        return { ok: false, error: String((data as any)?.error || "Rollback failed") }
+      }
+
+      const deletedCount = Number((data as any)?.deletedCount || 0)
+      const failedCount = Number((data as any)?.failedCount || 0)
+      if ((data as any)?.alreadyRolledBack) {
+        return { ok: true, message: "This run was already rolled back.", deletedCount: 0, failedCount: 0 }
+      }
+      const message = failedCount > 0
+        ? `Rollback finished with warnings. Removed ${deletedCount}, ${failedCount} could not be removed.`
+        : `Rollback finished. Removed ${deletedCount} item(s).`
+      return { ok: true, message, deletedCount, failedCount }
+    } catch (err: any) {
+      return { ok: false, error: String(err?.message || err || "Rollback failed") }
+    }
+  }
+
   return {
     step,
     steps,
@@ -1268,6 +1349,7 @@ export function useLoopEvents(authToken?: string) {
     deleteSchedule,
     updateSchedule,
     retrySchedule,
+    rollbackScheduleRun,
 
     isFinishing,
     runStatus,

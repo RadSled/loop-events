@@ -2123,6 +2123,124 @@ app.use("/api/schedules", requireAuth, createSchedulesRouter({
   notify: notifyUser,
 }))
 
+app.get("/api/schedules/:id/runs", requireAuth, async (req, res) => {
+  try {
+    const authUser = req.authUser || {}
+    const userId = String(authUser.id || "").trim()
+    if (!userId) return res.status(401).json({ ok: false, error: "Not authenticated" })
+
+    const scheduleId = String(req.params.id || "").trim()
+    if (!scheduleId) return res.status(400).json({ ok: false, error: "Missing schedule id" })
+
+    const schedule = loadSchedules({ userId }).find((x) => String(x && x.id ? x.id : "") === scheduleId)
+    if (!schedule) return res.status(404).json({ ok: false, error: "Schedule not found" })
+
+    const runs = Array.isArray(schedule.runs) ? schedule.runs.slice().reverse() : []
+    return res.json({ ok: true, runs })
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) })
+  }
+})
+
+app.post("/api/schedules/:id/runs/:runId/rollback", requireAuth, async (req, res) => {
+  try {
+    const authUser = req.authUser || {}
+    const userId = String(authUser.id || "").trim()
+    if (!userId) return res.status(401).json({ ok: false, error: "Not authenticated" })
+
+    const scheduleId = String(req.params.id || "").trim()
+    const runId = String(req.params.runId || "").trim()
+    if (!scheduleId) return res.status(400).json({ ok: false, error: "Missing schedule id" })
+    if (!runId) return res.status(400).json({ ok: false, error: "Missing run id" })
+
+    const schedule = loadSchedules({ userId }).find((x) => String(x && x.id ? x.id : "") === scheduleId)
+    if (!schedule) return res.status(404).json({ ok: false, error: "Schedule not found" })
+
+    const runs = Array.isArray(schedule.runs) ? schedule.runs : []
+    const runIdx = runs.findIndex((r) => String(r && r.runId ? r.runId : "") === runId)
+    if (runIdx < 0) return res.status(404).json({ ok: false, error: "Run not found" })
+
+    const targetRun = runs[runIdx] || {}
+    if (targetRun.rolledBackAt) {
+      return res.json({ ok: true, alreadyRolledBack: true, schedule })
+    }
+
+    const createdItemIds = Array.isArray(targetRun.createdItemIds)
+      ? targetRun.createdItemIds.map((id) => String(id || "")).filter(Boolean)
+      : []
+    const createdStartKeys = Array.isArray(targetRun.createdStartKeys)
+      ? targetRun.createdStartKeys.map((k) => String(k || ""))
+      : []
+
+    let deletedIds = []
+    if (createdItemIds.length) {
+      deletedIds = await deleteItems(schedule.collectionId, createdItemIds)
+    }
+
+    const deletedSet = new Set((Array.isArray(deletedIds) ? deletedIds : []).map((id) => String(id || "")).filter(Boolean))
+    const deletedCount = deletedSet.size
+    const failedCount = Math.max(0, createdItemIds.length - deletedCount)
+
+    const nextRuns = runs.slice()
+    nextRuns[runIdx] = {
+      ...targetRun,
+      rolledBackAt: Date.now(),
+      rollbackDeletedCount: deletedCount,
+      rollbackFailedCount: failedCount,
+      rollbackError: failedCount > 0 ? "Some items could not be removed." : "",
+    }
+
+    const nextTrackedIds = (Array.isArray(schedule.createdItemIds) ? schedule.createdItemIds : []).filter(
+      (id) => !deletedSet.has(String(id || ""))
+    )
+    const nextCreatedCount = Math.max(0, Number(schedule.createdCount || 0) - deletedCount)
+
+    const rollbackHistoryAdds = []
+    for (let i = 0; i < createdItemIds.length; i++) {
+      const id = String(createdItemIds[i] || "")
+      if (!id || !deletedSet.has(id)) continue
+      rollbackHistoryAdds.push({
+        itemId: id,
+        startISO: String(createdStartKeys[i] || ""),
+        source: "rollback",
+        state: "deleted",
+        createdAt: Date.now(),
+        outputMode: String(targetRun.outputMode || schedule.status || "draft"),
+      })
+    }
+    const nextHistory = [...(Array.isArray(schedule.history) ? schedule.history : []), ...rollbackHistoryAdds].slice(-1000)
+
+    const updated = patchSchedule(scheduleId, {
+      createdItemIds: nextTrackedIds,
+      createdCount: nextCreatedCount,
+      history: nextHistory,
+      runs: nextRuns,
+    }, { userId })
+
+    if (!updated) return res.status(500).json({ ok: false, error: "Could not update schedule after rollback" })
+
+    await notifyUser({
+      userId,
+      type: failedCount > 0 ? "schedule.rollback_partial" : "schedule.rollback_completed",
+      category: "schedule",
+      severity: failedCount > 0 ? "warning" : "success",
+      title: failedCount > 0 ? "Rollback completed with warnings" : "Rollback completed",
+      body: failedCount > 0
+        ? `${String(schedule.templateTitle || "Schedule")}: removed ${deletedCount}, ${failedCount} could not be removed.`
+        : `${String(schedule.templateTitle || "Schedule")}: removed ${deletedCount} item(s) from selected run.`,
+    })
+
+    return res.json({
+      ok: true,
+      schedule: updated,
+      deletedCount,
+      failedCount,
+    })
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) })
+  }
+})
+
 app.post("/api/schedules/:id/retry", requireAuth, async (req, res) => {
   try {
     const authUser = req.authUser || {}

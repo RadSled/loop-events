@@ -6,9 +6,9 @@ backend/node_modules/
 backend/.env
 backend/tokens.dev.json
 backend/schedules/schedules.json
+backend/notifications/notifications.json
 backend/data/
-schedules/schedules.json
-notifications/
-schedules/
+/schedules/
+/notifications/
 .DS_Store
 **/.DS_Store

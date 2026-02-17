@@ -312,6 +312,8 @@ function AuthenticatedApp(props: {
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialIndex, setTutorialIndex] = useState(0)
   const [retryingScheduleId, setRetryingScheduleId] = useState<string | null>(null)
+  const [rollingBackRunId, setRollingBackRunId] = useState<string | null>(null)
+  const [rollbackStatus, setRollbackStatus] = useState("")
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [notificationsError, setNotificationsError] = useState("")
   const mainScrollRef = useRef<HTMLElement | null>(null)
@@ -968,7 +970,10 @@ function AuthenticatedApp(props: {
                             <button
                               className="le-actionIcon"
                               type="button"
-                              onClick={() => setDetailsId(s.id)}
+                              onClick={() => {
+                                setRollbackStatus("")
+                                setDetailsId(s.id)
+                              }}
                               aria-label="Details"
                               title="Details"
                             >
@@ -1042,12 +1047,18 @@ function AuthenticatedApp(props: {
 
                       return createPortal(
                         <>
-                          <div className="le-modalOverlay" onClick={() => setDetailsId(null)} />
+                          <div className="le-modalOverlay" onClick={() => {
+                            setRollbackStatus("")
+                            setDetailsId(null)
+                          }} />
                           <div className="le-modal" role="dialog" aria-label="Schedule details">
                           <div className="le-modalHeader">
                             <div className="le-modalTitle">Schedule details</div>
                             <div className="le-modalTopRight">
-                              <button className="le-modalIconBtn" type="button" onClick={() => setDetailsId(null)} aria-label="Close" title="Close">
+                              <button className="le-modalIconBtn" type="button" onClick={() => {
+                                setRollbackStatus("")
+                                setDetailsId(null)
+                              }} aria-label="Close" title="Close">
                                 <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
                                 </svg>
@@ -1133,8 +1144,74 @@ function AuthenticatedApp(props: {
                             )}
                           </div>
 
+                          <div className="le-detailsHistoryWrap" style={{ marginTop: 10 }}>
+                            <div className="le-modalTitle">Run history ({Array.isArray(s.runs) ? s.runs.length : 0})</div>
+                            {Array.isArray(s.runs) && s.runs.length > 0 ? (
+                              <div className="le-detailsHistoryList">
+                                {[...s.runs]
+                                  .slice(-60)
+                                  .reverse()
+                                  .map((run: any, idx: number) => {
+                                    const runId = String(run?.runId || "")
+                                    const disabled = !runId || Boolean(run?.rolledBackAt) || rollingBackRunId === runId
+                                    return (
+                                      <div className="le-detailsHistoryRow" key={`${runId || "run"}-${idx}`}>
+                                        <div className="le-detailsHistoryTop">
+                                          <span className="le-detailsHistoryItem">{run?.source || "manual"} run</span>
+                                          <span>{run?.createdAt ? new Date(run.createdAt).toLocaleString() : "-"}</span>
+                                        </div>
+                                        <div className="le-detailsHistoryPills">
+                                          <span className={`le-detailsHistoryState is-${String(run?.status || "ok")}`}>{run?.status || "ok"}</span>
+                                          <span className="le-detailsHistoryState">Created {Number(run?.createdCount || 0)}</span>
+                                          {run?.rolledBackAt ? <span className="le-detailsHistoryState">Rolled back</span> : null}
+                                        </div>
+                                        <div className="le-detailsHistoryMeta">
+                                          <span>Run: {runId || "-"}</span>
+                                          <span>
+                                            {run?.rolledBackAt
+                                              ? `Rollback: ${new Date(run.rolledBackAt).toLocaleString()}`
+                                              : "Rollback available"}
+                                          </span>
+                                        </div>
+                                        <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+                                          <button
+                                            className="le-btn ghost"
+                                            type="button"
+                                            disabled={disabled}
+                                            onClick={() => {
+                                              if (!runId || !s.id) return
+                                              const yes = window.confirm("Rollback this run? This removes items created by this run.")
+                                              if (!yes) return
+                                              setRollbackStatus("")
+                                              setRollingBackRunId(runId)
+                                              void le.rollbackScheduleRun(String(s.id), runId).then((out: any) => {
+                                                if (!out?.ok) {
+                                                  setRollbackStatus(String(out?.error || "Rollback failed"))
+                                                } else {
+                                                  setRollbackStatus(String(out?.message || "Rollback complete"))
+                                                }
+                                                setRollingBackRunId(null)
+                                              })
+                                            }}
+                                          >
+                                            {rollingBackRunId === runId ? "Rolling back..." : "Rollback run"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                              </div>
+                            ) : (
+                              <div className="le-drawerEmptySub" style={{ marginTop: 8 }}>No runs yet.</div>
+                            )}
+                            {rollbackStatus ? <div className="le-modalText" style={{ marginTop: 8 }}>{rollbackStatus}</div> : null}
+                          </div>
+
                             <div className="le-modalActions">
-                              <button className="le-btn primary" type="button" onClick={() => setDetailsId(null)}>
+                              <button className="le-btn primary" type="button" onClick={() => {
+                                setRollbackStatus("")
+                                setDetailsId(null)
+                              }}>
                                 Close
                               </button>
                             </div>
