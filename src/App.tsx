@@ -512,8 +512,6 @@ function AuthenticatedApp(props: {
         planLabel={planLabel}
         scheduledCount={le.schedules.length}
         onOpenPlans={() => {
-          le.setDrawerOpen(true)
-          le.setDrawerView("menu")
           setComparePlansOpen(true)
         }}
         onOpenSchedules={() => {
@@ -1646,6 +1644,86 @@ function AuthenticatedApp(props: {
           onSave={(id, patch) => le.updateSchedule(id, patch)}
         />
       </main>
+
+      {comparePlansOpen && !le.drawerOpen && typeof document !== "undefined" && document.body
+        ? createPortal(
+            <>
+              <div className="le-modalOverlay" onClick={() => setComparePlansOpen(false)} />
+              <div className="le-modal le-planCompareModal" role="dialog" aria-label="Compare plans">
+                <div className="le-modalHeader">
+                  <div className="le-modalTitle">Compare plans</div>
+                  <div className="le-modalTopRight">
+                    <button className="le-modalIconBtn" type="button" onClick={() => setComparePlansOpen(false)} aria-label="Close" title="Close">
+                      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="le-planCompareGrid">
+                  <div className={`le-planCard ${planLabel === "Free" ? "is-current" : ""}`}>
+                    <div className="le-planCardHead">
+                      <div className="le-planCardTitle">Free</div>
+                    </div>
+                    <div className="le-planRow"><span className="ok">✓</span><span>Limited to 10 copies per run</span></div>
+                    <div className="le-planRow"><span className="ok">✓</span><span>Max 1 Auto refill schedule</span></div>
+                    <div className="le-planRow"><span className="ok">✓</span><span>Pause, resume, delete, and history</span></div>
+                    <div className="le-planRow"><span className="no">✕</span><span>Edit schedule</span></div>
+                  </div>
+
+                  <div className={`le-planCard ${planLabel === "Paid" ? "is-current" : ""}`}>
+                    <div className="le-planCardHead">
+                      <div className="le-planCardTitle">Paid</div>
+                      <div className="le-planCardPrice">$10/mo</div>
+                    </div>
+                    <div className="le-planRow"><span className="ok">✓</span><span>Up to 100 copies per run</span></div>
+                    <div className="le-planRow"><span className="ok">✓</span><span>Unlimited Auto refill schedules</span></div>
+                    <div className="le-planRow"><span className="ok">✓</span><span>Pause, resume, delete, and history</span></div>
+                    <div className="le-planRow"><span className="ok">✓</span><span>Edit schedule</span></div>
+                  </div>
+                </div>
+
+                <div className="le-modalActions">
+                  {!billingAvailable ? (
+                    <button className="le-btn ghost" type="button" disabled>
+                      Billing coming soon
+                    </button>
+                  ) : planLabel === "Free" ? (
+                    <div className="le-planUpgradeWrap">
+                      <button
+                        className="le-btn le-btnUpgrade"
+                        type="button"
+                        disabled={planBusy}
+                        onClick={async () => {
+                          const out = await onStartCheckout()
+                          if (out.ok) startPlanSyncPolling()
+                          if (out.ok) setComparePlansOpen(false)
+                        }}
+                      >
+                        {planBusy ? "Opening..." : "Upgrade to Paid"}
+                      </button>
+                      {planMessage ? <div className="le-planUpgradeError">{planMessage}</div> : null}
+                    </div>
+                  ) : (
+                    <button
+                      className="le-btn le-btnDanger"
+                      type="button"
+                      disabled={planBusy}
+                      onClick={() => {
+                        setComparePlansOpen(false)
+                        setConfirmDowngrade(true)
+                      }}
+                    >
+                      {planBusy ? "Opening..." : "Downgrade to Free"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>,
+            document.body
+          )
+        : null}
 
       {tutorialOpen && typeof document !== "undefined" && document.body
         ? createPortal(
