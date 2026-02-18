@@ -4779,7 +4779,7 @@ button:disabled,
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #dc2626;
+  background: var(--brand-accent, #7a81f9);
   border: 1px solid #fff;
 }
 
@@ -5147,7 +5147,7 @@ textarea {
 
 /* Final UI alignment pass */
 .le-iconDot {
-  background: var(--blue) !important;
+  background: var(--brand-accent, #7a81f9) !important;
 }
 
 .le-notificationList {
@@ -5756,6 +5756,10 @@ textarea {
   letter-spacing: 0.02em;
 }
 
+.le-authBrand {
+  margin-bottom: 14px !important;
+}
+
 .le-authTitle {
   margin-top: 2px;
   font-size: 24px !important;
@@ -5791,7 +5795,7 @@ textarea {
 }
 
 .le-authDivider {
-  margin: 10px 0 !important;
+  margin: 12px 0 !important;
 }
 
 .le-authOptionsRow {
@@ -5821,12 +5825,14 @@ textarea {
 
 .le-sbPlanBadge.free:not(:disabled):hover,
 .le-sbPlanBadge.free:not(:disabled):focus-visible {
-  border-color: #c4cfdf;
-  background: #edf2f9;
+  border-color: #b5c3dc !important;
+  background: #e7edf7 !important;
+  box-shadow: 0 2px 8px rgba(31, 41, 55, 0.12);
 }
 
 .le-sbPlanBadge.paid:not(:disabled):hover,
 .le-sbPlanBadge.paid:not(:disabled):focus-visible {
-  border-color: #9fd8b6;
-  background: #e3f5ea;
+  border-color: #8fccaa !important;
+  background: #def4e8 !important;
+  box-shadow: 0 2px 8px rgba(31, 123, 75, 0.16);
 }

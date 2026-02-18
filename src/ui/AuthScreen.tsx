@@ -259,10 +259,6 @@ export default function AuthScreen(props: {
               </span>
               <span className="le-authBrandName">Loop Events</span>
             </div>
-            <div className="le-authTitle">{mode === "signin" ? "Sign in to your account" : "Create your account"}</div>
-            <div className="le-authSub">
-              {mode === "signin" ? "Enter your email and password to log in." : "Use email or Google to start scheduling events."}
-            </div>
           </div>
         </div>
 

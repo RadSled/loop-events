@@ -85,6 +85,9 @@ app.use(
 )
 
 app.use((req, res, next) => {
+  if (req.path === "/api/auth/relay" || req.path.startsWith("/api/auth/relay/")) {
+    return next()
+  }
   const origin = String(req.headers.origin || "").trim()
   if (origin && !isAllowedCorsOrigin(origin)) {
     return res.status(403).json({ ok: false, error: "Origin not allowed" })
