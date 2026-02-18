@@ -326,6 +326,10 @@ export default function AuthScreen(props: {
             </div>
           ) : null}
 
+          {mode === "signin" && status.msg ? (
+            <div className={`le-authStatus ${status.type === "err" ? "is-err" : status.type === "ok" ? "is-ok" : ""}`}>{status.msg}</div>
+          ) : null}
+
           <button className="le-btn primary" type="submit" disabled={busy || !supabase}>
             {busyLabel}
           </button>
@@ -382,7 +386,7 @@ export default function AuthScreen(props: {
           </>
         ) : null}
 
-        {status.msg ? <div className={`le-authStatus ${status.type === "err" ? "is-err" : status.type === "ok" ? "is-ok" : ""}`}>{status.msg}</div> : null}
+        {mode !== "signin" && status.msg ? <div className={`le-authStatus ${status.type === "err" ? "is-err" : status.type === "ok" ? "is-ok" : ""}`}>{status.msg}</div> : null}
         </div>
       </div>
     </div>
