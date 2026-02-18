@@ -5499,6 +5499,21 @@ textarea {
   box-shadow: 0 0 0 2px rgba(122, 129, 249, 0.14) !important;
 }
 
+.le-notificationItem.is-unread.is-success {
+  border-color: var(--state-green-border) !important;
+  box-shadow: 0 0 0 2px var(--state-green-bg) !important;
+}
+
+.le-notificationItem.is-unread.is-warning {
+  border-color: var(--state-orange-border) !important;
+  box-shadow: 0 0 0 2px var(--state-orange-bg) !important;
+}
+
+.le-notificationItem.is-unread.is-error {
+  border-color: var(--state-red-border) !important;
+  box-shadow: 0 0 0 2px var(--state-red-bg) !important;
+}
+
 .le-accountToolTab.is-active {
   border-color: rgba(122, 129, 249, 0.64) !important;
   box-shadow: 0 0 0 2px rgba(122, 129, 249, 0.16) !important;
