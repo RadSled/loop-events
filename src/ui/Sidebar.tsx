@@ -14,6 +14,7 @@ export default function Sidebar(props: {
   onReset: () => void
   planLabel?: "Free" | "Paid"
   scheduledCount?: number
+  currentSiteName?: string
   onOpenPlans?: () => void
   onOpenSchedules?: () => void
 }) {
@@ -51,6 +52,19 @@ export default function Sidebar(props: {
             <span>{Math.max(0, Number(props.scheduledCount || 0))}</span>
           </button>
         </div>
+
+        {props.currentSiteName ? (
+          <div className="le-sbSiteChip" title={`Connected site: ${props.currentSiteName}`} aria-label={`Connected site: ${props.currentSiteName}`}>
+            <span className="le-sbSiteIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8.7 9.9a3 3 0 0 1 0-4.24l1.66-1.66a3 3 0 1 1 4.24 4.24l-.76.76" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M15.3 14.1a3 3 0 0 1 0 4.24l-1.66 1.66a3 3 0 1 1-4.24-4.24l.76-.76" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M9.5 14.5l5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </span>
+            <span className="le-sbSiteText">{props.currentSiteName}</span>
+          </div>
+        ) : null}
 
         <div className="le-sb-actions">
           <button

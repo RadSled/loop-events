@@ -5608,6 +5608,44 @@ textarea {
   padding-right: 9px;
 }
 
+.le-sbSiteChip {
+  min-width: 0;
+  flex: 1;
+  max-width: 210px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid #d7e1f0;
+  background: #f6f8fd;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  color: #465c84;
+}
+
+.le-sbSiteIcon {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid #d2dcf1;
+  background: #edf2ff;
+  color: #6b78f5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.le-sbSiteText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 /* Schedule details rows with separators */
 .le-detailsSection {
   padding: 10px 12px;

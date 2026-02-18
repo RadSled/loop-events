@@ -510,6 +510,7 @@ function AuthenticatedApp(props: {
         onReset={le.resetAll}
         planLabel={planLabel}
         scheduledCount={le.schedules.length}
+        currentSiteName={le.currentSiteName}
         onOpenPlans={() => {
           setComparePlansOpen(true)
         }}

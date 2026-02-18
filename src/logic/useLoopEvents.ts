@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { isoTodayDate, splitISO, combineISO, formatISO } from "./dateUtils"
 import { WEEKDAYS, buildPreviewStarts, buildPreviewEnds } from "./previewLogic"
@@ -482,6 +482,9 @@ export function useLoopEvents(authToken?: string) {
   const [loadingCollections, setLoadingCollections] = useState(false)
   const [loadingSchema, setLoadingSchema] = useState(false)
   const [loadingItems, setLoadingItems] = useState(false)
+  const [designerSiteId, setDesignerSiteId] = useState("")
+  const [designerSiteName, setDesignerSiteName] = useState("")
+  const [designerSiteReady, setDesignerSiteReady] = useState(false)
 
   const [startFieldId, setStartFieldId] = useState("")
   const [endFieldId, setEndFieldId] = useState("")
@@ -531,6 +534,7 @@ export function useLoopEvents(authToken?: string) {
     type: "idle",
     msg: "",
   })
+  const prevSiteIdRef = useRef("")
 
   async function fetchSchedules() {
     setSchedulesLoading(true)
@@ -550,6 +554,36 @@ export function useLoopEvents(authToken?: string) {
   }
 
   const steps = useMemo(() => [{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, { n: 5 }] as { n: Step }[], [])
+
+  // Current Webflow Designer site (if running in Designer)
+  useEffect(() => {
+    let cancelled = false
+
+    async function run() {
+      try {
+        const wf = (window as any)?.webflow
+        if (!wf || typeof wf.getSiteInfo !== "function") {
+          if (!cancelled) setDesignerSiteReady(true)
+          return
+        }
+        const info = await wf.getSiteInfo()
+        const id = String(info?.siteId || "").trim()
+        const name = String(info?.siteName || info?.shortName || "").trim()
+        if (!cancelled) {
+          if (id) setDesignerSiteId(id)
+          if (name) setDesignerSiteName(name)
+          setDesignerSiteReady(true)
+        }
+      } catch {
+        if (!cancelled) setDesignerSiteReady(true)
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Health
   useEffect(() => {
@@ -590,6 +624,7 @@ export function useLoopEvents(authToken?: string) {
   useEffect(() => {
     let cancelled = false
     if (!serverOk || !String(authToken || "").trim()) return
+    if (!designerSiteReady) return
 
     async function run() {
       setLoadingSites(true)
@@ -609,9 +644,17 @@ export function useLoopEvents(authToken?: string) {
           timezone: String(s.timezone || s.timeZone || "").trim(),
         }))
 
+        const scoped = designerSiteId
+          ? mapped.filter((s) => s.id === designerSiteId)
+          : mapped
+
         if (!cancelled) {
-          setSites(mapped)
-          if (!siteId && mapped[0]?.id) setSiteId(mapped[0].id)
+          setSites(scoped)
+          if (designerSiteId) {
+            setSiteId(designerSiteId)
+          } else if (!siteId && scoped[0]?.id) {
+            setSiteId(scoped[0].id)
+          }
         }
       } catch {
         if (!cancelled) setSites([])
@@ -624,7 +667,22 @@ export function useLoopEvents(authToken?: string) {
     return () => {
       cancelled = true
     }
-  }, [serverOk, siteId, authToken])
+  }, [serverOk, siteId, authToken, designerSiteId, designerSiteReady])
+
+  useEffect(() => {
+    const prev = String(prevSiteIdRef.current || "")
+    const next = String(siteId || "")
+    if (prev && next && prev !== next) {
+      setCollectionId("")
+      setCollectionSchema(null)
+      setItems([])
+      setStartFieldId("")
+      setEndFieldId("")
+      setSelectedItemId("")
+      setSearch("")
+    }
+    prevSiteIdRef.current = next
+  }, [siteId])
 
   // Collections
   useEffect(() => {
@@ -790,6 +848,12 @@ export function useLoopEvents(authToken?: string) {
     const tz = String(site?.timezone || "").trim()
     return tz || "UTC"
   }, [sites, siteId])
+
+  const currentSiteName = useMemo(() => {
+    if (designerSiteName) return designerSiteName
+    const site = (Array.isArray(sites) ? sites : []).find((s) => s.id === siteId)
+    return String(site?.displayName || site?.name || "").trim()
+  }, [designerSiteName, sites, siteId])
 
   const startWantsTime = startField?.type === "datetime"
   const endWantsTime = endField?.type === "datetime"
@@ -1268,6 +1332,7 @@ export function useLoopEvents(authToken?: string) {
     sites: Array.isArray(sites) ? sites : [],
     siteId,
     setSiteId,
+    currentSiteName,
 
     collections: Array.isArray(collections) ? collections : [],
     collectionId,
