@@ -1550,6 +1550,22 @@ function AuthenticatedApp(props: {
           </div>
         ) : null}
 
+        {le.serverOk && le.webflowError ? (
+          <div className="le-alert warn">
+            {le.webflowError}
+            <button
+              className="le-btn ghost"
+              type="button"
+              style={{ marginLeft: 10 }}
+              onClick={() => {
+                window.open(le.webflowAuthorizeUrl, "_blank", "noopener,noreferrer")
+              }}
+            >
+              Connect Webflow
+            </button>
+          </div>
+        ) : null}
+
           <section className="le-panel">
             {le.step === 1 ? <Step1 le={le} /> : null}
             {le.step === 2 ? <Step2 le={le} /> : null}
