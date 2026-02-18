@@ -89,7 +89,7 @@ export default function Sidebar(props: {
             }}
           >
             <span className="le-sbSiteIcon" aria-hidden="true">
-              <svg viewBox="0 0 12 12" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 12 12" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3.2 0.9v2.6M8.8 0.9v2.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                 <path d="M1.9 3.6h8.2v1.2A4.1 4.1 0 0 1 6 8.9h0a4.1 4.1 0 0 1-4.1-4.1V3.6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                 <path d="M6 8.9v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>

@@ -485,6 +485,7 @@ export function useLoopEvents(authToken?: string) {
   const [designerSiteId, setDesignerSiteId] = useState("")
   const [designerSiteName, setDesignerSiteName] = useState("")
   const [designerSiteReady, setDesignerSiteReady] = useState(false)
+  const [siteReloadTick, setSiteReloadTick] = useState(0)
 
   const [startFieldId, setStartFieldId] = useState("")
   const [endFieldId, setEndFieldId] = useState("")
@@ -667,7 +668,7 @@ export function useLoopEvents(authToken?: string) {
     return () => {
       cancelled = true
     }
-  }, [serverOk, siteId, authToken, designerSiteId, designerSiteReady])
+  }, [serverOk, siteId, authToken, designerSiteId, designerSiteReady, siteReloadTick])
 
   useEffect(() => {
     const prev = String(prevSiteIdRef.current || "")
@@ -980,6 +981,10 @@ export function useLoopEvents(authToken?: string) {
     (step === 1 && !canNextFrom1) ||
     (step === 2 && !canNextFrom2) ||
     (step === 3 && !canNextFrom3)
+
+  function refreshSiteConnection() {
+    setSiteReloadTick((x) => x + 1)
+  }
 
   const stepperPct = ((step - 1) / 4) * 100
   const showLoadingBanner = loadingSites || loadingCollections || loadingSchema || loadingItems
@@ -1345,6 +1350,7 @@ export function useLoopEvents(authToken?: string) {
     currentSiteName,
     isCheckingSiteConnection,
     isCurrentSiteConnected,
+    refreshSiteConnection,
 
     collections: Array.isArray(collections) ? collections : [],
     collectionId,

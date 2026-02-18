@@ -514,7 +514,24 @@ function AuthenticatedApp(props: {
         isCheckingSiteConnection={le.isCheckingSiteConnection}
         isCurrentSiteConnected={le.isCurrentSiteConnected}
         onOpenSiteConnection={() => {
-          window.open(backendApiUrl("/oauth/start"), "_blank", "noopener,noreferrer")
+          const popup = window.open(backendApiUrl("/oauth/start"), "_blank", "noopener,noreferrer")
+          le.refreshSiteConnection()
+
+          const onFocus = () => {
+            le.refreshSiteConnection()
+            window.removeEventListener("focus", onFocus)
+          }
+          window.addEventListener("focus", onFocus)
+
+          if (!popup) return
+          const startedAt = Date.now()
+          const watcher = window.setInterval(() => {
+            le.refreshSiteConnection()
+            if (popup.closed || Date.now() - startedAt > 90000) {
+              window.clearInterval(watcher)
+              le.refreshSiteConnection()
+            }
+          }, 2000)
         }}
         onOpenPlans={() => {
           setComparePlansOpen(true)
