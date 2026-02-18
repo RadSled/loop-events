@@ -5719,9 +5719,11 @@ textarea {
 }
 
 .le-authHero {
-  padding: 14px 14px 10px;
+  padding: 18px 14px 14px;
   color: #ffffff;
   background: transparent;
+  display: grid;
+  place-items: center;
 }
 
 .le-authFormShell {
@@ -5757,7 +5759,12 @@ textarea {
 }
 
 .le-authBrand {
-  margin-bottom: 14px !important;
+  margin: 8px auto 20px !important;
+}
+
+.le-authHead {
+  display: grid;
+  justify-items: center;
 }
 
 .le-authTitle {
