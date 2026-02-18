@@ -39,6 +39,7 @@ const STRIPE_SECRET_KEY = String(process.env.STRIPE_SECRET_KEY || "").trim()
 const STRIPE_PRICE_ID_PAID = String(process.env.STRIPE_PRICE_ID_PAID || "").trim()
 const STRIPE_WEBHOOK_SECRET = String(process.env.STRIPE_WEBHOOK_SECRET || "").trim()
 const APP_BASE_URL = String(process.env.APP_BASE_URL || "http://localhost:1337").trim().replace(/\/+$/, "")
+const STRIPE_RETURN_BASE = String(process.env.STRIPE_RETURN_BASE || `http://localhost:${PORT}`).trim().replace(/\/+$/, "")
 const STRIPE_DOWNGRADE_MODE = String(process.env.STRIPE_DOWNGRADE_MODE || "period_end").trim().toLowerCase() === "immediate" ? "immediate" : "period_end"
 const TEST_PLAN_ALLOWLIST = String(process.env.TEST_PLAN_ALLOWLIST || "creator@radsled.com")
   .split(",")
@@ -314,8 +315,8 @@ function getPlanLimits(plan) {
 }
 
 function ensureStripeConfig() {
-  if (!STRIPE_SECRET_KEY || !STRIPE_PRICE_ID_PAID || !APP_BASE_URL) {
-    throw new Error("Missing STRIPE_SECRET_KEY, STRIPE_PRICE_ID_PAID, or APP_BASE_URL in backend/.env")
+  if (!STRIPE_SECRET_KEY || !STRIPE_PRICE_ID_PAID) {
+    throw new Error("Missing STRIPE_SECRET_KEY or STRIPE_PRICE_ID_PAID in backend/.env")
   }
 }
 
@@ -529,7 +530,7 @@ function pruneUserSchedulesToFreeLimit(userId) {
 }
 
 function getPublicServerBase(req) {
-  if (APP_BASE_URL) return APP_BASE_URL
+  if (STRIPE_RETURN_BASE) return STRIPE_RETURN_BASE
   const proto = String(req.headers["x-forwarded-proto"] || req.protocol || "http").split(",")[0].trim() || "http"
   const host = String(req.headers["x-forwarded-host"] || req.get("host") || "localhost:3001").split(",")[0].trim() || "localhost:3001"
   return `${proto}://${host}`
