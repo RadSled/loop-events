@@ -5608,27 +5608,26 @@ textarea {
   padding-right: 9px;
 }
 
-.le-sbSiteChip {
+.le-sbSiteMeta {
   min-width: 0;
   flex: 1;
   max-width: 210px;
   height: 24px;
-  border-radius: 999px;
-  border: 1px solid #d7e1f0;
-  background: #f6f8fd;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 8px;
+  padding: 0 4px;
   color: #465c84;
+  opacity: 0.66;
+}
+
+.le-sbSiteMeta:hover {
+  opacity: 0.86;
 }
 
 .le-sbSiteIcon {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  border: 1px solid #d2dcf1;
-  background: #edf2ff;
+  width: 14px;
+  height: 14px;
   color: #6b78f5;
   display: inline-flex;
   align-items: center;
@@ -5637,13 +5636,30 @@ textarea {
 }
 
 .le-sbSiteText {
+  position: relative;
   min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.le-sbSiteMeta.is-truncated .le-sbSiteText {
+  padding-right: 8px;
+}
+
+.le-sbSiteMeta.is-truncated .le-sbSiteText::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 10px;
+  background: rgba(70, 92, 132, 0.35);
 }
 
 /* Schedule details rows with separators */

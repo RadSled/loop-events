@@ -18,6 +18,26 @@ export default function Sidebar(props: {
   onOpenPlans?: () => void
   onOpenSchedules?: () => void
 }) {
+  const siteTextRef = React.useRef<HTMLSpanElement | null>(null)
+  const [siteTruncated, setSiteTruncated] = React.useState(false)
+
+  React.useEffect(() => {
+    function checkSiteOverflow() {
+      const el = siteTextRef.current
+      if (!el) {
+        setSiteTruncated(false)
+        return
+      }
+      setSiteTruncated(el.scrollWidth > el.clientWidth + 1)
+    }
+
+    checkSiteOverflow()
+    window.addEventListener("resize", checkSiteOverflow)
+    return () => {
+      window.removeEventListener("resize", checkSiteOverflow)
+    }
+  }, [props.currentSiteName])
+
   function openMenuNow(e?: React.SyntheticEvent) {
     if (e && typeof e.preventDefault === "function") e.preventDefault()
     props.onOpenMenu()
@@ -54,15 +74,20 @@ export default function Sidebar(props: {
         </div>
 
         {props.currentSiteName ? (
-          <div className="le-sbSiteChip" title={`Connected site: ${props.currentSiteName}`} aria-label={`Connected site: ${props.currentSiteName}`}>
+          <div
+            className={`le-sbSiteMeta ${siteTruncated ? "is-truncated" : ""}`}
+            title={`Connected site: ${props.currentSiteName}`}
+            aria-label={`Connected site: ${props.currentSiteName}`}
+          >
             <span className="le-sbSiteIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8.7 9.9a3 3 0 0 1 0-4.24l1.66-1.66a3 3 0 1 1 4.24 4.24l-.76.76" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M15.3 14.1a3 3 0 0 1 0 4.24l-1.66 1.66a3 3 0 1 1-4.24-4.24l.76-.76" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M9.5 14.5l5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <circle cx="6" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.8"/>
+                <circle cx="18" cy="7" r="2.2" stroke="currentColor" strokeWidth="1.8"/>
+                <circle cx="18" cy="17" r="2.2" stroke="currentColor" strokeWidth="1.8"/>
+                <path d="M8 11l7.5-3M8 13l7.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
             </span>
-            <span className="le-sbSiteText">{props.currentSiteName}</span>
+            <span ref={siteTextRef} className="le-sbSiteText">{props.currentSiteName}</span>
           </div>
         ) : null}
 
