@@ -267,7 +267,7 @@ export default function AuthScreen(props: {
         {configError ? <div className="le-alert warn">{configError}</div> : null}
 
         <form className="le-stack" onSubmit={onEmailSubmit}>
-          {mode === "signup" ? <div className="le-authSignupTitle">Sign up</div> : null}
+          <div className="le-authSignupTitle">{mode === "signin" ? "Login" : "Sign up"}</div>
           {mode === "signup" ? (
             <div>
               <div className="le-label">Full name</div>
