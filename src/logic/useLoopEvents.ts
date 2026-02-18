@@ -855,6 +855,12 @@ export function useLoopEvents(authToken?: string) {
     return String(site?.displayName || site?.name || "").trim()
   }, [designerSiteName, sites, siteId])
 
+  const isCurrentSiteConnected = useMemo(() => {
+    const safeSiteId = String(siteId || "").trim()
+    if (!safeSiteId) return false
+    return (Array.isArray(sites) ? sites : []).some((s) => String(s?.id || "").trim() === safeSiteId)
+  }, [sites, siteId])
+
   const startWantsTime = startField?.type === "datetime"
   const endWantsTime = endField?.type === "datetime"
 
@@ -1333,6 +1339,7 @@ export function useLoopEvents(authToken?: string) {
     siteId,
     setSiteId,
     currentSiteName,
+    isCurrentSiteConnected,
 
     collections: Array.isArray(collections) ? collections : [],
     collectionId,

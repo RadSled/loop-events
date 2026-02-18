@@ -15,6 +15,7 @@ export default function Sidebar(props: {
   planLabel?: "Free" | "Paid"
   scheduledCount?: number
   currentSiteName?: string
+  isCurrentSiteConnected?: boolean
   onOpenPlans?: () => void
   onOpenSchedules?: () => void
 }) {
@@ -75,7 +76,7 @@ export default function Sidebar(props: {
 
         {props.currentSiteName ? (
           <div
-            className={`le-sbSiteMeta ${siteTruncated ? "is-truncated" : ""}`}
+            className={`le-sbSiteMeta ${props.isCurrentSiteConnected ? "is-connected" : "is-disconnected"} ${siteTruncated ? "is-truncated" : ""}`}
             title={`Connected site: ${props.currentSiteName}`}
             aria-label={`Connected site: ${props.currentSiteName}`}
           >

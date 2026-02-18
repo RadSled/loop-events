@@ -511,6 +511,7 @@ function AuthenticatedApp(props: {
         planLabel={planLabel}
         scheduledCount={le.schedules.length}
         currentSiteName={le.currentSiteName}
+        isCurrentSiteConnected={le.isCurrentSiteConnected}
         onOpenPlans={() => {
           setComparePlansOpen(true)
         }}
