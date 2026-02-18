@@ -16,6 +16,7 @@ export default function Sidebar(props: {
   scheduledCount?: number
   currentSiteName?: string
   isCurrentSiteConnected?: boolean
+  onOpenSiteConnection?: () => void
   onOpenPlans?: () => void
   onOpenSchedules?: () => void
 }) {
@@ -75,13 +76,15 @@ export default function Sidebar(props: {
         </div>
 
         {props.currentSiteName ? (
-          <div
+          <button
+            type="button"
             className={`le-sbSiteMeta ${props.isCurrentSiteConnected ? "is-connected" : "is-disconnected"} ${siteTruncated ? "is-truncated" : ""}`}
             title={`Connected site: ${props.currentSiteName}`}
             aria-label={`Connected site: ${props.currentSiteName}`}
+            onClick={() => props.onOpenSiteConnection && props.onOpenSiteConnection()}
           >
             <span className="le-sbSiteIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M8.5 4.5v4M15.5 4.5v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
                 <path d="M6.5 9h11v2.5a5.5 5.5 0 0 1-5.5 5.5h0a5.5 5.5 0 0 1-5.5-5.5V9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
                 <path d="M12 17v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -89,7 +92,7 @@ export default function Sidebar(props: {
               </svg>
             </span>
             <span ref={siteTextRef} className="le-sbSiteText">{props.currentSiteName}</span>
-          </div>
+          </button>
         ) : null}
 
         <div className="le-sb-actions">

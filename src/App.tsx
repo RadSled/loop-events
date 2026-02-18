@@ -512,6 +512,9 @@ function AuthenticatedApp(props: {
         scheduledCount={le.schedules.length}
         currentSiteName={le.currentSiteName}
         isCurrentSiteConnected={le.isCurrentSiteConnected}
+        onOpenSiteConnection={() => {
+          window.open(backendApiUrl("/oauth/start"), "_blank", "noopener,noreferrer")
+        }}
         onOpenPlans={() => {
           setComparePlansOpen(true)
         }}
