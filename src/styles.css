@@ -5617,7 +5617,7 @@ textarea {
   background: transparent;
   display: inline-flex;
   align-items: center;
-  gap: 1px;
+  gap: 0;
   padding: 0 4px;
   color: #465c84;
   opacity: 0.66;
@@ -5633,7 +5633,7 @@ textarea {
   -webkit-appearance: none;
 }
 
-.le-sbSiteMetaButton:disabled {
+.le-sbSiteMetaButton.is-disabled {
   cursor: default;
 }
 

@@ -79,11 +79,14 @@ export default function Sidebar(props: {
         {props.currentSiteName ? (
           <button
             type="button"
-            className={`le-sbSiteMeta le-sbSiteMetaButton ${props.isCurrentSiteConnected ? "is-connected" : "is-disconnected"} ${props.isCheckingSiteConnection ? "is-checking" : ""} ${siteTruncated ? "is-truncated" : ""}`}
+            className={`le-sbSiteMeta le-sbSiteMetaButton ${props.isCurrentSiteConnected ? "is-connected" : "is-disconnected"} ${props.isCheckingSiteConnection ? "is-checking" : ""} ${props.isCurrentSiteConnected || props.isCheckingSiteConnection ? "is-disabled" : ""} ${siteTruncated ? "is-truncated" : ""}`}
             title={`Connected site: ${props.currentSiteName}`}
             aria-label={`Connected site: ${props.currentSiteName}`}
-            onClick={() => props.onOpenSiteConnection && props.onOpenSiteConnection()}
-            disabled={Boolean(props.isCurrentSiteConnected || props.isCheckingSiteConnection)}
+            aria-disabled={Boolean(props.isCurrentSiteConnected || props.isCheckingSiteConnection)}
+            onClick={() => {
+              if (props.isCurrentSiteConnected || props.isCheckingSiteConnection) return
+              if (props.onOpenSiteConnection) props.onOpenSiteConnection()
+            }}
           >
             <span className="le-sbSiteIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
