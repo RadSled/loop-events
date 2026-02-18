@@ -81,10 +81,10 @@ export default function Sidebar(props: {
           >
             <span className="le-sbSiteIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="6" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.8"/>
-                <circle cx="18" cy="7" r="2.2" stroke="currentColor" strokeWidth="1.8"/>
-                <circle cx="18" cy="17" r="2.2" stroke="currentColor" strokeWidth="1.8"/>
-                <path d="M8 11l7.5-3M8 13l7.5 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M8.5 4.5v4M15.5 4.5v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M6.5 9h11v2.5a5.5 5.5 0 0 1-5.5 5.5h0a5.5 5.5 0 0 1-5.5-5.5V9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                <path d="M12 17v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M9.7 20h4.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
             </span>
             <span ref={siteTextRef} className="le-sbSiteText">{props.currentSiteName}</span>
