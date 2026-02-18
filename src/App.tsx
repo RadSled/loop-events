@@ -241,6 +241,8 @@ const TUTORIAL_STEPS: Array<{ title: string; text: string }> = [
 
 type AppNotification = {
   id: string
+  type?: string
+  category?: string
   title: string
   body: string
   createdAt: number
@@ -346,6 +348,8 @@ function AuthenticatedApp(props: {
       setNotifications(
         list.map((n: any) => ({
           id: String(n?.id || ""),
+          type: String(n?.type || "").trim(),
+          category: String(n?.category || "").trim(),
           title: String(n?.title || "Notification"),
           body: String(n?.body || ""),
           createdAt: Number(n?.createdAt || 0),
@@ -1302,8 +1306,13 @@ function AuthenticatedApp(props: {
                       .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
                       .map((n) => {
                         const severity = String((n as any)?.severity || "info").trim().toLowerCase()
+                        const type = String((n as any)?.type || "").trim().toLowerCase()
+                        const title = String((n as any)?.title || "").trim().toLowerCase()
+                        const isWelcome = type === "account.welcome" || title === "welcome to loop events"
                         const toneClass =
-                          severity === "success"
+                          isWelcome
+                            ? "is-info"
+                            : severity === "success"
                             ? "is-success"
                             : severity === "error"
                             ? "is-error"
