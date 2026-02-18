@@ -5617,7 +5617,7 @@ textarea {
   background: transparent;
   display: inline-flex;
   align-items: center;
-  gap: 0;
+  gap: 3px;
   padding: 0 4px;
   color: #465c84;
   opacity: 0.66;
