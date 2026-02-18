@@ -5734,7 +5734,7 @@ textarea {
 .le-authHero .le-authBrandName,
 .le-authHero .le-authTitle,
 .le-authHero .le-authSub {
-  color: #ffffff !important;
+  color: #0f172a !important;
 }
 
 .le-authBrandLogo {
@@ -5750,6 +5750,12 @@ textarea {
   height: 34px !important;
 }
 
+.le-authBrandName {
+  font-size: 17px !important;
+  font-weight: 760 !important;
+  letter-spacing: 0.02em;
+}
+
 .le-authTitle {
   margin-top: 2px;
   font-size: 24px !important;
@@ -5761,7 +5767,8 @@ textarea {
 .le-authSub {
   font-size: 13px !important;
   line-height: 1.4;
-  opacity: 0.92;
+  color: #4f5d77 !important;
+  opacity: 1;
 }
 
 .le-socialBtnGoogle {
@@ -5781,6 +5788,10 @@ textarea {
   outline: none;
   border-color: #7a81f9 !important;
   box-shadow: 0 0 0 3px rgba(122, 129, 249, 0.2);
+}
+
+.le-authDivider {
+  margin: 10px 0 !important;
 }
 
 .le-authOptionsRow {
@@ -5806,4 +5817,16 @@ textarea {
   .le-authTitle {
     font-size: 21px !important;
   }
+}
+
+.le-sbPlanBadge.free:not(:disabled):hover,
+.le-sbPlanBadge.free:not(:disabled):focus-visible {
+  border-color: #c4cfdf;
+  background: #edf2f9;
+}
+
+.le-sbPlanBadge.paid:not(:disabled):hover,
+.le-sbPlanBadge.paid:not(:disabled):focus-visible {
+  border-color: #9fd8b6;
+  background: #e3f5ea;
 }

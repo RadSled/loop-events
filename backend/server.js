@@ -66,6 +66,7 @@ if (TRUST_PROXY) {
 function isAllowedCorsOrigin(origin) {
   const raw = String(origin || "").trim().replace(/\/+$/, "")
   if (!raw) return true
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(raw)) return true
   if (!CORS_ALLOWLIST.length) return false
   if (CORS_ALLOWLIST.includes("*")) return true
   return CORS_ALLOWLIST.includes(raw)

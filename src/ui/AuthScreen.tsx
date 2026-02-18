@@ -335,6 +335,26 @@ export default function AuthScreen(props: {
           </button>
         </form>
 
+        <div className="le-authBottom">
+          {mode === "signin" ? (
+            <button className="le-linkBtn" type="button" onClick={() => setMode("signup")} disabled={busy}>
+              No account yet? Sign up
+            </button>
+          ) : (
+            <button
+              className="le-linkBtn"
+              type="button"
+              onClick={() => {
+                setMode("signin")
+                setFullName("")
+              }}
+              disabled={busy}
+            >
+              Already have an account? Log in
+            </button>
+          )}
+        </div>
+
         {mode === "signin" ? (
           <>
             <div className="le-authDivider">or continue with Google</div>
@@ -365,26 +385,6 @@ export default function AuthScreen(props: {
             </div>
           </>
         ) : null}
-
-        <div className="le-authBottom">
-          {mode === "signin" ? (
-            <button className="le-linkBtn" type="button" onClick={() => setMode("signup")} disabled={busy}>
-              No account yet? Sign up
-            </button>
-          ) : (
-            <button
-              className="le-linkBtn"
-              type="button"
-              onClick={() => {
-                setMode("signin")
-                setFullName("")
-              }}
-              disabled={busy}
-            >
-              Already have an account? Log in
-            </button>
-          )}
-        </div>
 
         {status.msg ? <div className={`le-authStatus ${status.type === "err" ? "is-err" : status.type === "ok" ? "is-ok" : ""}`}>{status.msg}</div> : null}
         </div>
