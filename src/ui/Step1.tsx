@@ -35,7 +35,7 @@ export default function Step1(props: { le: any }) {
         </div>
 
         <div className="le-field">
-          <div className="le-label le-labelRow">Start date field <InfoDot text="This date drives recurrence and scheduling." /></div>
+          <div className="le-label le-labelRow">Start date field <InfoDot text="This is the date/time field the app uses to generate each scheduled copy." /></div>
           <select
             className="le-input"
             value={le.startFieldId}

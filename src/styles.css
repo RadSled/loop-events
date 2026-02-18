@@ -5685,3 +5685,105 @@ textarea {
     gap: 3px;
   }
 }
+
+/* Auth screen refresh */
+.le-authWrap {
+  padding: 10px !important;
+  background: radial-gradient(120% 80% at 50% -10%, #2f67ff 0%, #1f52e2 45%, #eef3ff 46%, #eef3ff 100%) !important;
+}
+
+.le-authMainCard {
+  width: min(420px, calc(100vw - 20px)) !important;
+  border-radius: 16px !important;
+  border: 1px solid #dce6f8 !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 38px rgba(17, 24, 39, 0.14) !important;
+  overflow: hidden;
+}
+
+.le-authHero {
+  padding: 14px 14px 10px;
+  color: #ffffff;
+  background: linear-gradient(160deg, #2f67ff 0%, #275cf0 55%, #1c4cd8 100%);
+}
+
+.le-authFormShell {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  background: #ffffff;
+}
+
+.le-authHero .le-authBrandName,
+.le-authHero .le-authTitle,
+.le-authHero .le-authSub {
+  color: #ffffff !important;
+}
+
+.le-authBrandLogo {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.le-authBrandLogo svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.le-authTitle {
+  margin-top: 2px;
+  font-size: 24px !important;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  font-weight: 700;
+}
+
+.le-authSub {
+  font-size: 13px !important;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+
+.le-socialBtnGoogle {
+  border: 1px solid #d5e0f1 !important;
+  background: #ffffff !important;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease !important;
+}
+
+.le-socialBtnGoogle:hover:not(:disabled) {
+  border-color: #9ab6ff !important;
+  background: #f6f9ff !important;
+  box-shadow: 0 0 0 3px rgba(122, 129, 249, 0.14);
+  transform: translateY(-1px);
+}
+
+.le-socialBtnGoogle:focus-visible {
+  outline: none;
+  border-color: #7a81f9 !important;
+  box-shadow: 0 0 0 3px rgba(122, 129, 249, 0.2);
+}
+
+.le-authOptionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.le-authRemember {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #55657d;
+}
+
+.le-authRemember input {
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .le-authTitle {
+    font-size: 21px !important;
+  }
+}

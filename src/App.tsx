@@ -1322,7 +1322,7 @@ function AuthenticatedApp(props: {
                   </div>
                 )}
                 <div className="le-modalActions le-modalActionsSticky">
-                  <button className="le-btn ghost" type="button" onClick={markNotificationsSeen}>Mark as read</button>
+                  <button className="le-btn ghost" type="button" onClick={markNotificationsSeen}>Mark all as read</button>
                   <button className="le-btn primary" type="button" onClick={() => setNotificationOpen(false)}>Close</button>
                 </div>
               </div>

@@ -9,16 +9,30 @@ declare global {
 }
 
 function apiUrl(path: string) {
-  const base = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
-  if (!base) return path
+  const raw = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
+  let base = raw || "http://localhost:3001"
+  if (/^localhost:\d+$/i.test(base) || /^127\.0\.0\.1:\d+$/i.test(base)) {
+    base = `http://${base}`
+  }
+  if (!/^https?:\/\//i.test(base)) {
+    base = "http://localhost:3001"
+  }
+  base = base.replace(":1337", ":3001")
   const clean = base.replace(/\/+$/, "")
   const p = path.startsWith("/") ? path : `/${path}`
   return `${clean}${p}`
 }
 
 function authCallbackUrl() {
-  const base = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
-  if (!base) return `${window.location.origin}/auth/callback`
+  const raw = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
+  let base = raw || "http://localhost:3001"
+  if (/^localhost:\d+$/i.test(base) || /^127\.0\.0\.1:\d+$/i.test(base)) {
+    base = `http://${base}`
+  }
+  if (!/^https?:\/\//i.test(base)) {
+    base = "http://localhost:3001"
+  }
+  base = base.replace(":1337", ":3001")
   const clean = base.replace(/\/+$/, "")
   return `${clean}/auth/callback`
 }
@@ -39,6 +53,7 @@ export default function AuthScreen(props: {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(true)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<{ type: "idle" | "ok" | "err"; msg: string }>({
     type: "idle",
@@ -54,6 +69,16 @@ export default function AuthScreen(props: {
   const callbackUrl = authCallbackUrl()
 
   useEffect(() => {
+    try {
+      const saved = String(window.localStorage.getItem("loop-events-remember-email") || "").trim()
+      if (saved) {
+        setEmail(saved)
+        setRememberMe(true)
+      }
+    } catch {
+      // ignore storage failures
+    }
+
     return () => {
       if (relayTimerRef.current) {
         window.clearTimeout(relayTimerRef.current)
@@ -125,6 +150,15 @@ export default function AuthScreen(props: {
           password,
         })
         if (error) throw error
+        try {
+          if (rememberMe) {
+            window.localStorage.setItem("loop-events-remember-email", email.trim())
+          } else {
+            window.localStorage.removeItem("loop-events-remember-email")
+          }
+        } catch {
+          // ignore storage failures
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -151,6 +185,26 @@ export default function AuthScreen(props: {
       } else {
         setStatus({ type: "err", msg })
       }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onForgotPassword() {
+    if (busy || !supabase) return
+    const safeEmail = String(email || "").trim()
+    if (!safeEmail) {
+      setStatus({ type: "err", msg: "Enter your email first, then click Forgot password." })
+      return
+    }
+    setBusy(true)
+    setStatus({ type: "idle", msg: "" })
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(safeEmail)
+      if (error) throw error
+      setStatus({ type: "ok", msg: "If this account exists, a password reset email was sent." })
+    } catch (err: any) {
+      setStatus({ type: "err", msg: String(err?.message || err || "Could not send reset email") })
     } finally {
       setBusy(false)
     }
@@ -197,14 +251,22 @@ export default function AuthScreen(props: {
   return (
     <div className="le-authWrap">
       <div className="le-authCard le-authMainCard">
-        <div className="le-authHead">
-          <div className="le-authBrand">
-            <span className="le-authBrandLogo" aria-hidden="true">
-              <LogoIcon />
-            </span>
-            <span className="le-authBrandName">Loop Events</span>
+        <div className="le-authHero">
+          <div className="le-authHead">
+            <div className="le-authBrand">
+              <span className="le-authBrandLogo" aria-hidden="true">
+                <LogoIcon />
+              </span>
+              <span className="le-authBrandName">Loop Events</span>
+            </div>
+            <div className="le-authTitle">{mode === "signin" ? "Sign in to your account" : "Create your account"}</div>
+            <div className="le-authSub">
+              {mode === "signin" ? "Enter your email and password to log in." : "Use email or Google to start scheduling events."}
+            </div>
           </div>
         </div>
+
+        <div className="le-authFormShell">
 
         {configError ? <div className="le-alert warn">{configError}</div> : null}
 
@@ -236,7 +298,7 @@ export default function AuthScreen(props: {
               </button>
             </div>
 
-            <div className="le-authDivider">or use email</div>
+          <div className="le-authDivider">or use email</div>
           </>
         ) : null}
 
@@ -284,6 +346,22 @@ export default function AuthScreen(props: {
             {mode === "signup" ? <div className="le-hint">Minimum 6 characters</div> : null}
           </div>
 
+          {mode === "signin" ? (
+            <div className="le-authOptionsRow">
+              <label className="le-authRemember">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(Boolean(e.target.checked))}
+                />
+                <span>Remember me</span>
+              </label>
+              <button className="le-linkBtn" type="button" onClick={onForgotPassword} disabled={busy || !supabase}>
+                Forgot password?
+              </button>
+            </div>
+          ) : null}
+
           <button className="le-btn primary" type="submit" disabled={busy || !supabase}>
             {busyLabel}
           </button>
@@ -310,6 +388,7 @@ export default function AuthScreen(props: {
         </div>
 
         {status.msg ? <div className={`le-authStatus ${status.type === "err" ? "is-err" : status.type === "ok" ? "is-ok" : ""}`}>{status.msg}</div> : null}
+        </div>
       </div>
     </div>
   )
