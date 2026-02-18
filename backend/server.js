@@ -740,10 +740,7 @@ async function webflowFetch(endpoint, options = {}, userId = "") {
   const token = getWebflowAccessTokenForUser(userId)
 
   if (!token) {
-    const err = new Error("No access token stored. Visit /oauth/start first.")
-    err.code = "WEBFLOW_AUTH_REQUIRED"
-    err.authorize_url = "/oauth/start"
-    throw err
+    throw new Error("No access token stored. Visit /oauth/start first.")
   }
 
   const res = await fetch(`https://api.webflow.com${endpoint}`, {
@@ -768,19 +765,6 @@ async function webflowFetch(endpoint, options = {}, userId = "") {
   }
 
   return data
-}
-
-function sendWebflowEndpointError(res, err) {
-  const code = String(err?.code || "").trim().toUpperCase()
-  const message = String(err?.message || err || "Webflow request failed")
-  if (code === "WEBFLOW_AUTH_REQUIRED") {
-    return res.status(401).json({
-      ok: false,
-      error: message,
-      authorize_url: String(err?.authorize_url || "/oauth/start"),
-    })
-  }
-  return res.status(500).json({ ok: false, error: message })
 }
 
 function normalizeItemResponse(data) {
@@ -2440,7 +2424,7 @@ app.get("/api/webflow/sites", requireAuth, webflowRateLimit, async (req, res) =>
     const data = await webflowFetch("/v2/sites", {}, req.authUser?.id)
     res.json(data)
   } catch (err) {
-    return sendWebflowEndpointError(res, err)
+    res.status(500).json({ ok: false, error: String(err.message || err) })
   }
 })
 
@@ -2450,7 +2434,7 @@ app.get("/api/webflow/sites/:siteId/collections", requireAuth, webflowRateLimit,
     const data = await webflowFetch(`/v2/sites/${siteId}/collections`, {}, req.authUser?.id)
     res.json(data)
   } catch (err) {
-    return sendWebflowEndpointError(res, err)
+    res.status(500).json({ ok: false, error: String(err.message || err) })
   }
 })
 
@@ -2460,7 +2444,7 @@ app.get("/api/webflow/collections/:collectionId", requireAuth, webflowRateLimit,
     const data = await webflowFetch(`/v2/collections/${collectionId}`, {}, req.authUser?.id)
     res.json(data)
   } catch (err) {
-    return sendWebflowEndpointError(res, err)
+    res.status(500).json({ ok: false, error: String(err.message || err) })
   }
 })
 
@@ -2470,7 +2454,7 @@ app.get("/api/webflow/collections/:collectionId/items", requireAuth, webflowRate
     const data = await webflowFetch(`/v2/collections/${collectionId}/items`, {}, req.authUser?.id)
     res.json(data)
   } catch (err) {
-    return sendWebflowEndpointError(res, err)
+    res.status(500).json({ ok: false, error: String(err.message || err) })
   }
 })
 
@@ -2489,7 +2473,8 @@ app.post("/api/loop-events/run", requireAuth, runRateLimit, async (req, res) => 
     const planInfo = await getUserPlanInfo(userId)
     const limits = planInfo.limits
 
-    const token = getWebflowAccessTokenForUser(userId)
+    const tokens = readTokens()
+    const token = tokens.default?.access_token
 
     if (!token) {
       return res.status(401).json({

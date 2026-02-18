@@ -465,13 +465,6 @@ async function safeJson(res: Response) {
   }
 }
 
-function readApiErrorMessage(res: Response, data: any, fallback: string) {
-  const msg = String(data?.error || data?.message || data?.raw || "").trim()
-  if (msg) return msg
-  if (!res.ok) return `${fallback} (${res.status})`
-  return fallback
-}
-
 export function useLoopEvents(authToken?: string) {
   const [step, setStep] = useState<Step>(1)
   const [serverOk, setServerOk] = useState(false)
@@ -489,7 +482,6 @@ export function useLoopEvents(authToken?: string) {
   const [loadingCollections, setLoadingCollections] = useState(false)
   const [loadingSchema, setLoadingSchema] = useState(false)
   const [loadingItems, setLoadingItems] = useState(false)
-  const [webflowError, setWebflowError] = useState("")
 
   const [startFieldId, setStartFieldId] = useState("")
   const [endFieldId, setEndFieldId] = useState("")
@@ -581,7 +573,6 @@ export function useLoopEvents(authToken?: string) {
     if (!serverOk || !String(authToken || "").trim()) {
       setSchedules([])
       setSchedulesLoaded(false)
-      setWebflowError("")
       return
     }
     void fetchSchedules()
@@ -605,9 +596,6 @@ export function useLoopEvents(authToken?: string) {
       try {
         const res = await fetch(apiUrl("/api/webflow/sites"), { headers: authHeaders(authToken) })
         const data = await safeJson(res)
-        if (!res.ok) {
-          throw new Error(readApiErrorMessage(res, data, "Could not load Webflow sites"))
-        }
 
         const list = Array.isArray((data as any)?.sites)
           ? (data as any).sites
@@ -624,17 +612,9 @@ export function useLoopEvents(authToken?: string) {
         if (!cancelled) {
           setSites(mapped)
           if (!siteId && mapped[0]?.id) setSiteId(mapped[0].id)
-          setWebflowError("")
         }
-      } catch (err: any) {
-        if (!cancelled) {
-          setSites([])
-          setCollections([])
-          setCollectionSchema(null)
-          setItems([])
-          setCollectionId("")
-          setWebflowError(String(err?.message || err || "Could not load Webflow sites"))
-        }
+      } catch {
+        if (!cancelled) setSites([])
       } finally {
         if (!cancelled) setLoadingSites(false)
       }
@@ -658,9 +638,6 @@ export function useLoopEvents(authToken?: string) {
           headers: authHeaders(authToken),
         })
         const data = await safeJson(res)
-        if (!res.ok) {
-          throw new Error(readApiErrorMessage(res, data, "Could not load collections"))
-        }
 
         const list = Array.isArray((data as any)?.collections)
           ? (data as any).collections
@@ -676,16 +653,9 @@ export function useLoopEvents(authToken?: string) {
         if (!cancelled) {
           setCollections(mapped)
           if (!collectionId && mapped[0]?.id) setCollectionId(mapped[0].id)
-          setWebflowError("")
         }
-      } catch (err: any) {
-        if (!cancelled) {
-          setCollections([])
-          setCollectionSchema(null)
-          setItems([])
-          setCollectionId("")
-          setWebflowError(String(err?.message || err || "Could not load collections"))
-        }
+      } catch {
+        if (!cancelled) setCollections([])
       } finally {
         if (!cancelled) setLoadingCollections(false)
       }
@@ -709,9 +679,6 @@ export function useLoopEvents(authToken?: string) {
           headers: authHeaders(authToken),
         })
         const data = (await safeJson(res)) as WebflowItemsResponse | null
-        if (!res.ok) {
-          throw new Error(readApiErrorMessage(res, data, "Could not load collection items"))
-        }
 
         const list = Array.isArray(data?.items) ? data!.items! : []
         const mapped: CmsItem[] = list.map((it: any) => {
@@ -727,11 +694,8 @@ export function useLoopEvents(authToken?: string) {
         })
 
         if (!cancelled) setItems(mapped)
-      } catch (err: any) {
-        if (!cancelled) {
-          setItems([])
-          setWebflowError(String(err?.message || err || "Could not load collection items"))
-        }
+      } catch {
+        if (!cancelled) setItems([])
       } finally {
         if (!cancelled) setLoadingItems(false)
       }
@@ -755,13 +719,9 @@ export function useLoopEvents(authToken?: string) {
           headers: authHeaders(authToken),
         })
         const data = (await safeJson(res)) as WebflowCollectionSchema | null
-        if (!res.ok) {
-          throw new Error(readApiErrorMessage(res, data, "Could not load collection fields"))
-        }
 
         if (!cancelled) {
           setCollectionSchema(data)
-          setWebflowError("")
 
           const fieldsRaw = Array.isArray(data?.fields) ? data!.fields! : []
           const dateFieldsLocal = fieldsRaw
@@ -782,11 +742,8 @@ export function useLoopEvents(authToken?: string) {
             setEndFieldId("")
           }
         }
-      } catch (err: any) {
-        if (!cancelled) {
-          setCollectionSchema(null)
-          setWebflowError(String(err?.message || err || "Could not load collection fields"))
-        }
+      } catch {
+        if (!cancelled) setCollectionSchema(null)
       } finally {
         if (!cancelled) setLoadingSchema(false)
       }
@@ -1412,8 +1369,6 @@ export function useLoopEvents(authToken?: string) {
     primaryDisabled,
     stepperPct,
     showLoadingBanner,
-    webflowError,
-    webflowAuthorizeUrl: apiUrl("/oauth/start"),
 
     goTo,
     goNext,
