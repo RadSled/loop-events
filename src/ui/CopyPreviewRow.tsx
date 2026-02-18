@@ -34,10 +34,8 @@ export default function CopyPreviewRow(props: Props) {
         {showEnd && endISO ? (
           <div className="le-endLine">
             <div className="le-arrow" aria-hidden="true">→</div>
-            <div className="le-endStack">
-              <div className="le-copyDate le-muted">{endDateTxt}</div>
-              {endWithTime ? <div className="le-copyTime le-muted">{endTimeTxt}</div> : null}
-            </div>
+            <div className="le-copyDate le-muted">{endDateTxt}</div>
+            {endWithTime ? <div className="le-copyTime le-muted">{endTimeTxt}</div> : null}
           </div>
         ) : null}
       </div>
