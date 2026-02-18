@@ -5689,7 +5689,22 @@ textarea {
 /* Auth screen refresh */
 .le-authWrap {
   padding: 10px !important;
-  background: radial-gradient(120% 80% at 50% -10%, #2f67ff 0%, #1f52e2 45%, #eef3ff 46%, #eef3ff 100%) !important;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #7a81f9 0%, #7a81f9 40%, #eef3ff 40%, #eef3ff 100%) !important;
+}
+
+.le-authWrap::before {
+  content: "";
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 999px;
+  top: -210px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.08) 45%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
 }
 
 .le-authMainCard {
@@ -5699,12 +5714,14 @@ textarea {
   background: #ffffff !important;
   box-shadow: 0 16px 38px rgba(17, 24, 39, 0.14) !important;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .le-authHero {
   padding: 14px 14px 10px;
   color: #ffffff;
-  background: linear-gradient(160deg, #2f67ff 0%, #275cf0 55%, #1c4cd8 100%);
+  background: transparent;
 }
 
 .le-authFormShell {
@@ -5721,13 +5738,16 @@ textarea {
 }
 
 .le-authBrandLogo {
-  width: 28px !important;
-  height: 28px !important;
+  width: 34px !important;
+  height: 34px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .le-authBrandLogo svg {
-  width: 28px !important;
-  height: 28px !important;
+  width: 34px !important;
+  height: 34px !important;
 }
 
 .le-authTitle {

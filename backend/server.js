@@ -44,10 +44,18 @@ const TEST_PLAN_ALLOWLIST = String(process.env.TEST_PLAN_ALLOWLIST || "creator@r
   .split(",")
   .map((x) => String(x || "").trim().toLowerCase())
   .filter(Boolean)
-const CORS_ALLOWLIST = String(process.env.CORS_ALLOWLIST || APP_BASE_URL || "")
-  .split(",")
-  .map((x) => String(x || "").trim().replace(/\/+$/, ""))
-  .filter(Boolean)
+const CORS_ALLOWLIST = Array.from(
+  new Set(
+    [
+      ...String(process.env.CORS_ALLOWLIST || APP_BASE_URL || "")
+        .split(",")
+        .map((x) => String(x || "").trim().replace(/\/+$/, ""))
+        .filter(Boolean),
+      `http://localhost:${PORT}`,
+      `http://127.0.0.1:${PORT}`,
+    ].filter(Boolean)
+  )
+)
 const SCHEDULER_ENABLED = String(process.env.SCHEDULER_ENABLED || "true").trim().toLowerCase() !== "false"
 const TRUST_PROXY = String(process.env.TRUST_PROXY || "").trim().toLowerCase() === "true"
 

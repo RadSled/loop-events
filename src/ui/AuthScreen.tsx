@@ -270,38 +270,6 @@ export default function AuthScreen(props: {
 
         {configError ? <div className="le-alert warn">{configError}</div> : null}
 
-        {mode === "signin" ? (
-          <>
-            <div className="le-authSocials">
-              <button className="le-socialBtn le-socialBtnGoogle" type="button" onClick={() => signInWith("google")} disabled={busy || !supabase}>
-                <span className="le-socialIcon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.39a4.61 4.61 0 0 1-2 3.03v2.51h3.23c1.88-1.73 2.98-4.28 2.98-7.44z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 22c2.7 0 4.97-.89 6.63-2.41l-3.23-2.51c-.89.6-2.02.96-3.4.96-2.61 0-4.83-1.76-5.62-4.13H3.05v2.58A9.99 9.99 0 0 0 12 22z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M6.38 13.91a6 6 0 0 1 0-3.82V7.51H3.05a9.99 9.99 0 0 0 0 8.98l3.33-2.58z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 5.96c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.62 9.62 0 0 0 12 2a9.99 9.99 0 0 0-8.95 5.51l3.33 2.58c.79-2.37 3.01-4.13 5.62-4.13z"
-                      fill="#EA4335"
-                    />
-                  </svg>
-                </span>
-                <span className="le-socialText">Continue with Google</span>
-              </button>
-            </div>
-
-          <div className="le-authDivider">or use email</div>
-          </>
-        ) : null}
-
         <form className="le-stack" onSubmit={onEmailSubmit}>
           {mode === "signup" ? <div className="le-authSignupTitle">Sign up</div> : null}
           {mode === "signup" ? (
@@ -366,6 +334,37 @@ export default function AuthScreen(props: {
             {busyLabel}
           </button>
         </form>
+
+        {mode === "signin" ? (
+          <>
+            <div className="le-authDivider">or continue with Google</div>
+            <div className="le-authSocials">
+              <button className="le-socialBtn le-socialBtnGoogle" type="button" onClick={() => signInWith("google")} disabled={busy || !supabase}>
+                <span className="le-socialIcon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M21.6 12.23c0-.74-.07-1.45-.19-2.13H12v4.03h5.39a4.61 4.61 0 0 1-2 3.03v2.51h3.23c1.88-1.73 2.98-4.28 2.98-7.44z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 22c2.7 0 4.97-.89 6.63-2.41l-3.23-2.51c-.89.6-2.02.96-3.4.96-2.61 0-4.83-1.76-5.62-4.13H3.05v2.58A9.99 9.99 0 0 0 12 22z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M6.38 13.91a6 6 0 0 1 0-3.82V7.51H3.05a9.99 9.99 0 0 0 0 8.98l3.33-2.58z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 5.96c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.62 9.62 0 0 0 12 2a9.99 9.99 0 0 0-8.95 5.51l3.33 2.58c.79-2.37 3.01-4.13 5.62-4.13z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                </span>
+                <span className="le-socialText">Continue with Google</span>
+              </button>
+            </div>
+          </>
+        ) : null}
 
         <div className="le-authBottom">
           {mode === "signin" ? (
