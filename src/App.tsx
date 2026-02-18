@@ -13,7 +13,6 @@ import AuthScreen from "./ui/AuthScreen"
 import AutoRefillEditModal from "./ui/AutoRefillEditModal"
 import LogoIcon from "./ui/LogoIcon"
 import Sidebar from "./ui/Sidebar"
-import TooltipIconButton from "./ui/TooltipIconButton"
 import Step1 from "./ui/Step1"
 import Step2 from "./ui/Step2"
 import Step3 from "./ui/Step3"
@@ -313,8 +312,6 @@ function AuthenticatedApp(props: {
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialIndex, setTutorialIndex] = useState(0)
   const [retryingScheduleId, setRetryingScheduleId] = useState<string | null>(null)
-  const [rollingBackRunId, setRollingBackRunId] = useState<string | null>(null)
-  const [rollbackStatus, setRollbackStatus] = useState("")
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [notificationsError, setNotificationsError] = useState("")
   const mainScrollRef = useRef<HTMLElement | null>(null)
@@ -977,10 +974,7 @@ function AuthenticatedApp(props: {
                             <button
                               className="le-actionIcon"
                               type="button"
-                              onClick={() => {
-                                setRollbackStatus("")
-                                setDetailsId(s.id)
-                              }}
+                              onClick={() => setDetailsId(s.id)}
                               aria-label="Details"
                               title="Details"
                             >
@@ -1076,18 +1070,12 @@ function AuthenticatedApp(props: {
 
                       return createPortal(
                         <>
-                          <div className="le-modalOverlay" onClick={() => {
-                            setRollbackStatus("")
-                            setDetailsId(null)
-                          }} />
+                          <div className="le-modalOverlay" onClick={() => setDetailsId(null)} />
                           <div className="le-modal" role="dialog" aria-label="Schedule details">
                           <div className="le-modalHeader">
                             <div className="le-modalTitle">Schedule details</div>
                             <div className="le-modalTopRight">
-                              <button className="le-modalIconBtn" type="button" onClick={() => {
-                                setRollbackStatus("")
-                                setDetailsId(null)
-                              }} aria-label="Close" title="Close">
+                              <button className="le-modalIconBtn" type="button" onClick={() => setDetailsId(null)} aria-label="Close" title="Close">
                                 <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
                                 </svg>
@@ -1194,46 +1182,12 @@ function AuthenticatedApp(props: {
                               <div className="le-detailsHistoryList">
                                 {runEntries.map((run: any, idx: number) => {
                                     const runId = String(run?.runId || "")
-                                    const canRollback = !run?.rolledBackAt && Number(run?.createdCount || 0) > 0
-                                    const disabled = !runId || !canRollback || rollingBackRunId === runId
                                     const sourceLabel = String(run?.source || "") === "manual" ? "Initial run" : "Auto-refill"
                                     const runTimeLabel = run?.createdAt ? new Date(run.createdAt).toLocaleString() : "-"
                                     return (
                                       <div className="le-detailsHistoryRow" key={`${runId || "run"}-${idx}`}>
                                         <div className="le-detailsHistoryTop">
                                           <span className="le-detailsHistoryItem">{runTimeLabel}</span>
-                                          {canRollback ? (
-                                            <TooltipIconButton
-                                              className="le-detailsRunRollback"
-                                              label="Rollback run"
-                                              disabled={disabled}
-                                              onClick={() => {
-                                                if (!runId || !s.id) return
-                                                const yes = window.confirm("Rollback this run? This removes items created by this run.")
-                                                if (!yes) return
-                                                setRollbackStatus("")
-                                                setRollingBackRunId(runId)
-                                                void le.rollbackScheduleRun(String(s.id), runId).then((out: any) => {
-                                                  if (!out?.ok) {
-                                                    setRollbackStatus(String(out?.error || "Rollback failed"))
-                                                  } else {
-                                                    setRollbackStatus(String(out?.message || "Rollback complete"))
-                                                  }
-                                                  setRollingBackRunId(null)
-                                                })
-                                              }}
-                                            >
-                                              {rollingBackRunId === runId ? (
-                                                "..."
-                                              ) : (
-                                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                                  <path d="M13 3a9 9 0 1 0 6.37 2.63" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                                  <path d="M13 8v5l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                                  <path d="M20.5 2.5v5h-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                                </svg>
-                                              )}
-                                            </TooltipIconButton>
-                                          ) : null}
                                         </div>
                                         <div className="le-detailsHistoryPills">
                                           <span className="le-detailsHistoryState is-source">{sourceLabel}</span>
@@ -1254,14 +1208,10 @@ function AuthenticatedApp(props: {
                             ) : (
                               <div className="le-drawerEmptySub" style={{ marginTop: 8 }}>No runs yet.</div>
                             )}
-                            {rollbackStatus ? <div className="le-modalText" style={{ marginTop: 8 }}>{rollbackStatus}</div> : null}
                           </div>
 
                             <div className="le-modalActions">
-                              <button className="le-btn primary" type="button" onClick={() => {
-                                setRollbackStatus("")
-                                setDetailsId(null)
-                              }}>
+                              <button className="le-btn primary" type="button" onClick={() => setDetailsId(null)}>
                                 Close
                               </button>
                             </div>
