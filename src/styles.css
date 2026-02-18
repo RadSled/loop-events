@@ -5617,28 +5617,31 @@ textarea {
   background: transparent;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 1px;
   padding: 0 4px;
   color: #465c84;
   opacity: 0.66;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
 }
 
 .le-sbSiteMeta:hover {
   opacity: 0.86;
 }
 
-.le-sbSiteMeta:focus-visible {
+.le-sbSiteMetaButton {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.le-sbSiteMetaButton:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(122, 129, 249, 0.2);
   border-radius: 8px;
 }
 
 .le-sbSiteIcon {
-  width: 16px;
-  height: 16px;
+  width: 19px;
+  height: 19px;
   color: #6b78f5;
   display: inline-flex;
   align-items: center;
