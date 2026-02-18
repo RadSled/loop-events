@@ -855,6 +855,10 @@ export function useLoopEvents(authToken?: string) {
     return String(site?.displayName || site?.name || "").trim()
   }, [designerSiteName, sites, siteId])
 
+  const isCheckingSiteConnection = useMemo(() => {
+    return !designerSiteReady || loadingSites
+  }, [designerSiteReady, loadingSites])
+
   const isCurrentSiteConnected = useMemo(() => {
     const safeSiteId = String(siteId || "").trim()
     if (!safeSiteId) return false
@@ -1339,6 +1343,7 @@ export function useLoopEvents(authToken?: string) {
     siteId,
     setSiteId,
     currentSiteName,
+    isCheckingSiteConnection,
     isCurrentSiteConnected,
 
     collections: Array.isArray(collections) ? collections : [],

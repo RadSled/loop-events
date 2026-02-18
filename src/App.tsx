@@ -511,6 +511,7 @@ function AuthenticatedApp(props: {
         planLabel={planLabel}
         scheduledCount={le.schedules.length}
         currentSiteName={le.currentSiteName}
+        isCheckingSiteConnection={le.isCheckingSiteConnection}
         isCurrentSiteConnected={le.isCurrentSiteConnected}
         onOpenSiteConnection={() => {
           window.open(backendApiUrl("/oauth/start"), "_blank", "noopener,noreferrer")
