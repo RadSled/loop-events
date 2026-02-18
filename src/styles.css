@@ -5713,7 +5713,10 @@ textarea {
   border: 1px solid #dce6f8 !important;
   background: #ffffff !important;
   box-shadow: 0 16px 38px rgba(17, 24, 39, 0.14) !important;
-  overflow: hidden;
+  max-height: calc(100vh - 20px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   position: relative;
   z-index: 1;
 }
