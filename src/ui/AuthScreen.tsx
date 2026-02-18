@@ -10,12 +10,14 @@ declare global {
 
 function apiUrl(path: string) {
   const raw = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
-  let base = raw || "http://localhost:3001"
+  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
+  const defaultBase = isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com"
+  let base = raw || defaultBase
   if (/^localhost:\d+$/i.test(base) || /^127\.0\.0\.1:\d+$/i.test(base)) {
     base = `http://${base}`
   }
   if (!/^https?:\/\//i.test(base)) {
-    base = "http://localhost:3001"
+    base = defaultBase
   }
   base = base.replace(":1337", ":3001")
   const clean = base.replace(/\/+$/, "")
@@ -25,12 +27,14 @@ function apiUrl(path: string) {
 
 function authCallbackUrl() {
   const raw = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
-  let base = raw || "http://localhost:3001"
+  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
+  const defaultBase = isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com"
+  let base = raw || defaultBase
   if (/^localhost:\d+$/i.test(base) || /^127\.0\.0\.1:\d+$/i.test(base)) {
     base = `http://${base}`
   }
   if (!/^https?:\/\//i.test(base)) {
-    base = "http://localhost:3001"
+    base = defaultBase
   }
   base = base.replace(":1337", ":3001")
   const clean = base.replace(/\/+$/, "")

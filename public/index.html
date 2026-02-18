@@ -8,6 +8,13 @@
   <body>
     <div id="root"></div>
     <script>
+      const backendFromQuery = new URLSearchParams(window.location.search).get("backend")
+      if (backendFromQuery) {
+        window.__LOOP_EVENTS_BACKEND__ = backendFromQuery
+      }
+      if (!window.__LOOP_EVENTS_BACKEND__) {
+        window.__LOOP_EVENTS_BACKEND__ = "https://loop-events.onrender.com"
+      }
       window.__SUPABASE_URL__ = "https://rgbaagmzszzouhhixpbl.supabase.co";
       window.__SUPABASE_ANON_KEY__ = "sb_publishable_UROiNGg8lrbDDAllVz8ggg_UsQ_jFa_";
     </script>
