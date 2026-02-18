@@ -490,6 +490,7 @@ export function useLoopEvents(authToken?: string) {
   const [loadingSchema, setLoadingSchema] = useState(false)
   const [loadingItems, setLoadingItems] = useState(false)
   const [webflowError, setWebflowError] = useState("")
+  const [designerSiteId, setDesignerSiteId] = useState("")
 
   const [startFieldId, setStartFieldId] = useState("")
   const [endFieldId, setEndFieldId] = useState("")
@@ -559,6 +560,31 @@ export function useLoopEvents(authToken?: string) {
 
   const steps = useMemo(() => [{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }, { n: 5 }] as { n: Step }[], [])
 
+  // Current Webflow Designer site
+  useEffect(() => {
+    let cancelled = false
+
+    async function run() {
+      try {
+        const wf = (window as any)?.webflow
+        if (!wf || typeof wf.getSiteInfo !== "function") return
+        const info = await wf.getSiteInfo()
+        const id = String(info?.siteId || "").trim()
+        if (!cancelled && id) {
+          setDesignerSiteId(id)
+          setSiteId(id)
+        }
+      } catch {
+        // Ignore outside Designer runtime.
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Health
   useEffect(() => {
     let cancelled = false
@@ -621,10 +647,29 @@ export function useLoopEvents(authToken?: string) {
           timezone: String(s.timezone || s.timeZone || "").trim(),
         }))
 
+        const scopedSites = designerSiteId
+          ? mapped.filter((s) => s.id === designerSiteId)
+          : mapped
+
         if (!cancelled) {
-          setSites(mapped)
-          if (!siteId && mapped[0]?.id) setSiteId(mapped[0].id)
-          setWebflowError("")
+          setSites(scopedSites)
+          if (designerSiteId) {
+            setSiteId(designerSiteId)
+            if (scopedSites.length === 0) {
+              setCollections([])
+              setCollectionSchema(null)
+              setItems([])
+              setCollectionId("")
+              setWebflowError("Current Webflow site was not found in authorized account. Reconnect Webflow for this site.")
+            } else {
+              setWebflowError("")
+            }
+          } else if (!siteId && scopedSites[0]?.id) {
+            setSiteId(scopedSites[0].id)
+            setWebflowError("")
+          } else {
+            setWebflowError("")
+          }
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -644,7 +689,7 @@ export function useLoopEvents(authToken?: string) {
     return () => {
       cancelled = true
     }
-  }, [serverOk, siteId, authToken])
+  }, [serverOk, siteId, authToken, designerSiteId])
 
   // Collections
   useEffect(() => {
