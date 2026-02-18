@@ -724,7 +724,7 @@ export function useLoopEvents(authToken?: string) {
     return () => {
       cancelled = true
     }
-  }, [serverOk, siteId, collectionId, authToken])
+  }, [serverOk, siteId, collectionId, authToken, siteReloadTick])
 
   // Items
   useEffect(() => {
@@ -764,7 +764,7 @@ export function useLoopEvents(authToken?: string) {
     return () => {
       cancelled = true
     }
-  }, [serverOk, collectionId, authToken])
+  }, [serverOk, collectionId, authToken, siteReloadTick])
 
   // Schema
   useEffect(() => {
@@ -812,7 +812,7 @@ export function useLoopEvents(authToken?: string) {
     return () => {
       cancelled = true
     }
-  }, [serverOk, collectionId, startFieldId, endFieldId, items, authToken])
+  }, [serverOk, collectionId, startFieldId, endFieldId, items, authToken, siteReloadTick])
 
   const selectedCollection = useMemo<Collection>(() => {
     const name =
