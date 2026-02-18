@@ -5618,7 +5618,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 2px;
+  gap: 5px;
   padding: 0 4px;
   color: #465c84;
   opacity: 0.66;
@@ -5674,7 +5674,6 @@ textarea {
 .le-sbSiteText {
   position: relative;
   min-width: 0;
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
