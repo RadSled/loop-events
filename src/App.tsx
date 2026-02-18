@@ -245,6 +245,7 @@ type AppNotification = {
   body: string
   createdAt: number
   readAt?: number | null
+  severity?: string
 }
 
 function AuthenticatedApp(props: {
@@ -1275,8 +1276,17 @@ function AuthenticatedApp(props: {
                       .filter((n) => !n.readAt)
                       .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
                       .map((n) => {
+                        const severity = String((n as any)?.severity || "info").trim().toLowerCase()
+                        const toneClass =
+                          severity === "success"
+                            ? "is-success"
+                            : severity === "error"
+                            ? "is-error"
+                            : severity === "warning"
+                            ? "is-warning"
+                            : "is-info"
                         return (
-                          <div className="le-notificationItem is-unread" key={n.id}>
+                          <div className={`le-notificationItem is-unread ${toneClass}`} key={n.id}>
                             <div className="le-notificationTop">
                               <div className="le-notificationTitle">{n.title}</div>
                               <button

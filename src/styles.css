@@ -8,6 +8,19 @@
 
   --blue: #1f86ee;
   --blue-weak: rgba(31, 134, 238, 0.12);
+  --state-green: #2f9e62;
+  --state-green-strong: #278552;
+  --state-green-bg: rgba(47, 158, 98, 0.14);
+  --state-green-border: rgba(47, 158, 98, 0.45);
+  --state-green-text: #1f7b4b;
+  --state-red: #d14f4f;
+  --state-red-bg: rgba(209, 79, 79, 0.14);
+  --state-red-border: rgba(209, 79, 79, 0.45);
+  --state-red-text: #a93636;
+  --state-orange: #d08a2f;
+  --state-orange-bg: rgba(208, 138, 47, 0.16);
+  --state-orange-border: rgba(208, 138, 47, 0.46);
+  --state-orange-text: #8a5b00;
 
   --shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
   --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.06);
@@ -1177,7 +1190,7 @@ body {
 
 .le-btn.le-btnDanger {
   background: linear-gradient(180deg, #ff6a6a 0%, #ef4444 100%);
-  border-color: rgba(239, 68, 68, 0.45);
+  border-color: var(--state-red-border);
   color: #ffffff;
 }
 
@@ -1195,13 +1208,13 @@ body {
 }
 
 .le-actionIcon--green {
-  background: rgba(34, 197, 94, 0.11);
-  border-color: rgba(34, 197, 94, 0.32);
+  background: var(--state-green-bg);
+  border-color: var(--state-green-border);
 }
 
 .le-actionIcon--red {
-  background: rgba(239, 68, 68, 0.11);
-  border-color: rgba(239, 68, 68, 0.32);
+  background: var(--state-red-bg);
+  border-color: var(--state-red-border);
 }
 
 .le-drawer {
@@ -2033,9 +2046,9 @@ body::after {
 }
 
 .le-sb-planBadge.paid {
-  color: #8a5b00;
-  background: #fff3dc;
-  border: 1px solid #f2cc87;
+  color: var(--state-orange-text);
+  background: rgba(208, 138, 47, 0.15);
+  border: 1px solid var(--state-orange-border);
 }
 
 .le-drawerAuthRow {
@@ -2070,14 +2083,14 @@ body::after {
   flex: 0 0 auto;
   display: grid !important;
   place-items: center;
-  border-color: rgba(239, 68, 68, 0.32) !important;
-  background: rgba(239, 68, 68, 0.12) !important;
-  color: #b42318 !important;
+  border-color: var(--state-red-border) !important;
+  background: var(--state-red-bg) !important;
+  color: var(--state-red-text) !important;
 }
 
 .le-signOutBtn:hover {
-  border-color: rgba(239, 68, 68, 0.45) !important;
-  background: rgba(239, 68, 68, 0.16) !important;
+  border-color: var(--state-red-border) !important;
+  background: rgba(209, 79, 79, 0.18) !important;
 }
 
 .le-authWrap {
@@ -3323,15 +3336,15 @@ button:disabled,
 }
 
 .le-alert--prominent.ok {
-  border-color: rgba(34, 197, 94, 0.45) !important;
-  background: rgba(34, 197, 94, 0.14) !important;
-  color: #166534 !important;
+  border-color: var(--state-green-border) !important;
+  background: var(--state-green-bg) !important;
+  color: var(--state-green-text) !important;
 }
 
 .le-alert--prominent.warn {
-  border-color: rgba(239, 68, 68, 0.45) !important;
-  background: rgba(239, 68, 68, 0.13) !important;
-  color: #b91c1c !important;
+  border-color: var(--state-red-border) !important;
+  background: var(--state-red-bg) !important;
+  color: var(--state-red-text) !important;
 }
 
 /* Critical layering fix: keep drawer/modal above overlay */
@@ -3493,9 +3506,9 @@ button:disabled,
 }
 
 .le-schedRunBadge.is-error {
-  border-color: #efc0c0;
-  background: #fff0f0;
-  color: #b83939;
+  border-color: var(--state-red-border);
+  background: var(--state-red-bg);
+  color: var(--state-red-text);
 }
 
 .le-schedActions {
@@ -3650,12 +3663,12 @@ button:disabled,
   color: #5a6780;
 }
 
-.le-detailsHistoryState.is-published { border-color: #b9e3cb; background: #ecfaf2; color: #1e7f48; }
-.le-detailsHistoryState.is-unpublished { border-color: #f4d2a9; background: #fff6ea; color: #a16207; }
+.le-detailsHistoryState.is-published { border-color: var(--state-green-border); background: var(--state-green-bg); color: var(--state-green-text); }
+.le-detailsHistoryState.is-unpublished { border-color: var(--state-orange-border); background: var(--state-orange-bg); color: var(--state-orange-text); }
 .le-detailsHistoryState.is-archived { border-color: #d6ddeb; background: #f4f7fb; color: #556176; }
-.le-detailsHistoryState.is-deleted { border-color: #f1c0c0; background: #fff2f2; color: #b93b3b; }
-.le-detailsHistoryState.is-ok { border-color: #b9e3cb; background: #ecfaf2; color: #1e7f48; }
-.le-detailsHistoryState.is-error { border-color: #f1c0c0; background: #fff2f2; color: #b93b3b; }
+.le-detailsHistoryState.is-deleted { border-color: var(--state-red-border); background: var(--state-red-bg); color: var(--state-red-text); }
+.le-detailsHistoryState.is-ok { border-color: var(--state-green-border); background: var(--state-green-bg); color: var(--state-green-text); }
+.le-detailsHistoryState.is-error { border-color: var(--state-red-border); background: var(--state-red-bg); color: var(--state-red-text); }
 .le-detailsHistoryState.is-source { border-color: #d9e2f2; background: #f2f6fd; color: #45556f; }
 
 .le-detailsHistoryMeta {
@@ -4035,15 +4048,15 @@ button:disabled,
 }
 
 .le-authStatus.is-err {
-  border-color: #f0c3c3;
-  background: #fff2f2;
-  color: #b84040;
+  border-color: var(--state-red-border);
+  background: var(--state-red-bg);
+  color: var(--state-red-text);
 }
 
 .le-authStatus.is-ok {
-  border-color: #b9e7c8;
-  background: #ecfcf2;
-  color: #0f7a3d;
+  border-color: var(--state-green-border);
+  background: var(--state-green-bg);
+  color: var(--state-green-text);
 }
 
 @media (max-width: 767px) {
@@ -4703,27 +4716,27 @@ button:disabled,
   border-radius: 999px;
   font-size: 9px;
   font-weight: 700;
-  color: #8a5b00;
-  background: #fff3c7;
-  border: 1px solid #f4d082;
+  color: var(--state-orange-text);
+  background: var(--state-orange-bg);
+  border: 1px solid var(--state-orange-border);
 }
 
 .le-check.is-locked {
-  border-color: #e4d8b6 !important;
-  background: #f7f0df !important;
-  color: #b4a27a !important;
+  border-color: var(--state-orange-border) !important;
+  background: rgba(208, 138, 47, 0.12) !important;
+  color: rgba(138, 91, 0, 0.66) !important;
   cursor: not-allowed !important;
 }
 
 .le-btn.le-btnUpgrade {
-  border-color: #3eb56e !important;
-  background: linear-gradient(180deg, #39b868, #2ea85c) !important;
+  border-color: var(--state-green-border) !important;
+  background: var(--state-green) !important;
   color: #ffffff !important;
 }
 
 .le-btn.le-btnUpgrade:not(:disabled):hover {
-  border-color: #2c9954 !important;
-  background: linear-gradient(180deg, #32ab60, #27914f) !important;
+  border-color: var(--state-green-strong) !important;
+  background: var(--state-green-strong) !important;
   color: #ffffff !important;
 }
 
@@ -4835,8 +4848,23 @@ button:disabled,
 }
 
 .le-notificationItem.is-unread {
-  border-color: rgba(31, 134, 238, 0.45);
-  box-shadow: 0 0 0 2px rgba(31, 134, 238, 0.1);
+  border-color: var(--brand-accent, #7a81f9);
+  box-shadow: 0 0 0 2px rgba(122, 129, 249, 0.14);
+}
+
+.le-notificationItem.is-unread.is-success {
+  border-color: var(--state-green-border);
+  box-shadow: 0 0 0 2px var(--state-green-bg);
+}
+
+.le-notificationItem.is-unread.is-warning {
+  border-color: var(--state-orange-border);
+  box-shadow: 0 0 0 2px var(--state-orange-bg);
+}
+
+.le-notificationItem.is-unread.is-error {
+  border-color: var(--state-red-border);
+  box-shadow: 0 0 0 2px var(--state-red-bg);
 }
 
 .le-notificationTitle {
@@ -4964,7 +4992,7 @@ button:disabled,
 }
 
 .le-switch.is-on {
-  background: rgba(34, 197, 94, 0.9);
+  background: var(--state-green);
 }
 
 .le-switch.is-on .le-switchKnob {
@@ -5664,11 +5692,11 @@ textarea {
 }
 
 .le-sbSiteMeta.is-connected .le-sbSiteIcon {
-  color: #2f9e62;
+  color: var(--state-green);
 }
 
 .le-sbSiteMeta.is-disconnected .le-sbSiteIcon {
-  color: #d14f4f;
+  color: var(--state-red);
 }
 
 .le-sbSiteText {
