@@ -5617,7 +5617,7 @@ textarea {
   background: transparent;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   padding: 0 4px;
   color: #465c84;
   opacity: 0.66;
@@ -5648,13 +5648,18 @@ textarea {
 }
 
 .le-sbSiteIcon {
-  width: 19px;
-  height: 19px;
+  width: auto;
+  height: auto;
+  line-height: 0;
   color: #6b78f5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+}
+
+.le-sbSiteIcon svg {
+  display: block;
 }
 
 .le-sbSiteMeta.is-connected .le-sbSiteIcon {
