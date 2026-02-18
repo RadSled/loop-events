@@ -320,6 +320,7 @@ function AuthenticatedApp(props: {
   const mainScrollRef = useRef<HTMLElement | null>(null)
   const planPollIntervalRef = useRef<number | null>(null)
   const planPollStopRef = useRef<number | null>(null)
+  const lastDesignerToastRef = useRef("")
   const [planSyncing, setPlanSyncing] = useState(false)
   const [planSyncedAt, setPlanSyncedAt] = useState<number>(0)
   const userEmail = String(user?.email || "").trim()
@@ -349,6 +350,7 @@ function AuthenticatedApp(props: {
           body: String(n?.body || ""),
           createdAt: Number(n?.createdAt || 0),
           readAt: n?.readAt ? Number(n.readAt) : null,
+          severity: String(n?.severity || "info").trim().toLowerCase() || "info",
         }))
       )
       setNotificationsError("")
@@ -398,6 +400,29 @@ function AuthenticatedApp(props: {
   useEffect(() => {
     setPrefsDraft(notificationPrefs)
   }, [notificationPrefs])
+
+  useEffect(() => {
+    const statusType = String(le.runStatus?.type || "").trim().toLowerCase()
+    const message = String(le.runStatus?.msg || "").trim()
+    if (!message) return
+    if (statusType !== "ok" && statusType !== "err") return
+
+    const toastKey = `${statusType}:${message}`
+    if (lastDesignerToastRef.current === toastKey) return
+    lastDesignerToastRef.current = toastKey
+
+    try {
+      const wf = (window as any)?.webflow
+      if (!wf || typeof wf.notify !== "function") return
+      void wf.notify({
+        type: statusType === "ok" ? "Success" : "Error",
+        message,
+        dismissAfter: statusType === "ok" ? 3500 : 5000,
+      })
+    } catch {
+      // Ignore when running outside Webflow Designer.
+    }
+  }, [le.runStatus?.type, le.runStatus?.msg])
 
   useEffect(() => {
     if (!accessToken) return
