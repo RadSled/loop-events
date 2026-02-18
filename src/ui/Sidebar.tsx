@@ -89,11 +89,11 @@ export default function Sidebar(props: {
             }}
           >
             <span className="le-sbSiteIcon" aria-hidden="true">
-              <svg viewBox="0 0 20 20" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 2.5v4M13 2.5v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M5.5 6.5h9v2.2a4.5 4.5 0 0 1-4.5 4.5h0a4.5 4.5 0 0 1-4.5-4.5V6.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-                <path d="M10 13.2v3.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M8 16.5h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8.5 4.5v4M15.5 4.5v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M6.5 9h11v2.5a5.5 5.5 0 0 1-5.5 5.5h0a5.5 5.5 0 0 1-5.5-5.5V9Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                <path d="M12 17v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M9.7 20h4.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
             </span>
             <span ref={siteTextRef} className="le-sbSiteText">{props.currentSiteName}</span>
