@@ -65,6 +65,44 @@ function backendApiUrl(path: string) {
   return `${clean}${p}`
 }
 
+function normalizeBackendBase(rawInput: string) {
+  let raw = String(rawInput || "").trim()
+  if (!raw) return ""
+  if (/^localhost:\d+$/i.test(raw) || /^127\.0\.0\.1:\d+$/i.test(raw)) {
+    raw = `http://${raw}`
+  }
+  if (!/^https?:\/\//i.test(raw)) return ""
+  return raw.replace(":1337", ":3001").replace(/\/+$/, "")
+}
+
+function backendCandidates() {
+  const explicit = normalizeBackendBase(String((window as any).__LOOP_EVENTS_BACKEND__ || ""))
+  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
+  const defaultBase = normalizeBackendBase(isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com")
+  const local = normalizeBackendBase("http://localhost:3001")
+  const hosted = normalizeBackendBase("https://loop-events.onrender.com")
+  const out = [explicit, defaultBase, local, hosted].filter(Boolean)
+  return Array.from(new Set(out))
+}
+
+async function fetchWithBackendFallback(path: string, init?: RequestInit) {
+  const p = path.startsWith("/") ? path : `/${path}`
+  let lastErr: any = null
+  for (const base of backendCandidates()) {
+    try {
+      const res = await fetch(`${base}${p}`, {
+        ...(init || {}),
+        cache: init?.cache || "no-store",
+      })
+      ;(window as any).__LOOP_EVENTS_BACKEND__ = base
+      return { res, endpoint: `${base}${p}` }
+    } catch (err: any) {
+      lastErr = err
+    }
+  }
+  throw (lastErr || new Error("Backend not reachable"))
+}
+
 function parseMaxSchedules(value: any): number | null {
   if (value === null || value === undefined || value === "") return null
   const n = Number(value)
@@ -250,6 +288,13 @@ type AppNotification = {
   severity?: string
 }
 
+type PlanStateSnapshot = {
+  plan: "free" | "paid"
+  hasReachedScheduleLimit: boolean
+  cancelAtPeriodEnd: boolean
+  currentPeriodEnd: string | null
+}
+
 function AuthenticatedApp(props: {
   user: User
   accessToken: string
@@ -267,7 +312,7 @@ function AuthenticatedApp(props: {
   currentPeriodEnd: string | null
   planBusy: boolean
   planMessage: string
-  onRefreshPlan: () => Promise<{ plan: "free" | "paid"; hasReachedScheduleLimit: boolean } | null>
+  onRefreshPlan: () => Promise<PlanStateSnapshot | null>
   onStartCheckout: () => Promise<{ ok: boolean; error?: string }>
   onOpenBillingPortal: () => Promise<{ ok: boolean; error?: string }>
 }) {
@@ -284,6 +329,8 @@ function AuthenticatedApp(props: {
     maxSchedules,
     hasReachedScheduleLimit,
     billingAvailable,
+    cancelAtPeriodEnd,
+    currentPeriodEnd,
     planBusy,
     planMessage,
     onRefreshPlan,
@@ -334,9 +381,33 @@ function AuthenticatedApp(props: {
   const canEditSchedules = planLabel === "Paid"
   const autoRefillLocked = planLabel === "Free" && hasReachedScheduleLimit
 
+  function normalizePeriodEnd(value: string | null | undefined) {
+    return String(value || "").trim() || null
+  }
+
+  function didBillingStateChange(baseline: PlanStateSnapshot, next: PlanStateSnapshot) {
+    return (
+      baseline.plan !== next.plan
+      || baseline.cancelAtPeriodEnd !== next.cancelAtPeriodEnd
+      || normalizePeriodEnd(baseline.currentPeriodEnd) !== normalizePeriodEnd(next.currentPeriodEnd)
+    )
+  }
+
+  function formatPlanDateLabel(value: string) {
+    const ts = Date.parse(value)
+    if (!Number.isFinite(ts)) return value
+    return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+  }
+
+  const planLifecycleHint = cancelAtPeriodEnd && currentPeriodEnd
+    ? `Downgrades to Free on ${formatPlanDateLabel(currentPeriodEnd)}`
+    : planLabel === "Paid" && currentPeriodEnd
+      ? `Paid plan renews on ${formatPlanDateLabel(currentPeriodEnd)}`
+      : ""
+
   async function fetchNotifications() {
     try {
-      const res = await fetch(backendApiUrl("/api/notifications"), {
+      const { res } = await fetchWithBackendFallback("/api/notifications", {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!res.ok) {
@@ -359,8 +430,12 @@ function AuthenticatedApp(props: {
       )
       setNotificationsError("")
     } catch (err: any) {
-      const endpoint = backendApiUrl("/api/notifications")
-      setNotificationsError(`${String(err?.message || err || "Could not load notifications")} (via ${endpoint})`)
+      const message = String(err?.message || err || "Could not load notifications")
+      if (/failed to fetch|networkerror|load failed|backend not reachable/i.test(message)) {
+        setNotificationsError("Notifications temporarily unavailable while reconnecting to backend.")
+        return
+      }
+      setNotificationsError(`${message} (via ${backendApiUrl("/api/notifications")})`)
     }
   }
 
@@ -376,15 +451,29 @@ function AuthenticatedApp(props: {
     setPlanSyncing(false)
   }
 
-  function startPlanSyncPolling() {
+  function startPlanSyncPolling(target?: Partial<Pick<PlanStateSnapshot, "plan" | "cancelAtPeriodEnd">>) {
     stopPlanSyncPolling()
     setPlanSyncing(true)
     let ticks = 0
+    const baseline: PlanStateSnapshot = {
+      plan: planLabel === "Paid" ? "paid" : "free",
+      hasReachedScheduleLimit,
+      cancelAtPeriodEnd,
+      currentPeriodEnd,
+    }
     const runTick = async () => {
       ticks += 1
       const out = await onRefreshPlan().catch(() => null)
       if (out) {
         setPlanSyncedAt(Date.now())
+        const reachedTarget = Boolean(target && (
+          (typeof target.plan === "string" && out.plan === target.plan)
+          || (typeof target.cancelAtPeriodEnd === "boolean" && out.cancelAtPeriodEnd === target.cancelAtPeriodEnd)
+        ))
+        if (didBillingStateChange(baseline, out) || reachedTarget) {
+          stopPlanSyncPolling()
+          return
+        }
       }
       if (ticks >= 40) {
         stopPlanSyncPolling()
@@ -525,6 +614,36 @@ function AuthenticatedApp(props: {
     }
   }
 
+  function openSiteConnection() {
+    const popup = window.open(backendApiUrl("/oauth/start"), "_blank", "noopener,noreferrer")
+    le.refreshSiteConnection()
+
+    const onFocus = () => {
+      le.refreshSiteConnection()
+      window.removeEventListener("focus", onFocus)
+    }
+    window.addEventListener("focus", onFocus)
+
+    if (!popup) return
+    const startedAt = Date.now()
+    const watcher = window.setInterval(() => {
+      le.refreshSiteConnection()
+      if (popup.closed || Date.now() - startedAt > 90000) {
+        window.clearInterval(watcher)
+        le.refreshSiteConnection()
+      }
+    }, 2000)
+  }
+
+  function retryBackendConnection() {
+    le.refreshSiteConnection()
+    try {
+      window.dispatchEvent(new Event("focus"))
+    } catch {
+      // ignore dispatch failures
+    }
+  }
+
   return (
     <div className="le-app">
       <Sidebar
@@ -543,26 +662,7 @@ function AuthenticatedApp(props: {
         currentSiteName={le.currentSiteName}
         isCheckingSiteConnection={le.isCheckingSiteConnection}
         isCurrentSiteConnected={le.isCurrentSiteConnected}
-        onOpenSiteConnection={() => {
-          const popup = window.open(backendApiUrl("/oauth/start"), "_blank", "noopener,noreferrer")
-          le.refreshSiteConnection()
-
-          const onFocus = () => {
-            le.refreshSiteConnection()
-            window.removeEventListener("focus", onFocus)
-          }
-          window.addEventListener("focus", onFocus)
-
-          if (!popup) return
-          const startedAt = Date.now()
-          const watcher = window.setInterval(() => {
-            le.refreshSiteConnection()
-            if (popup.closed || Date.now() - startedAt > 90000) {
-              window.clearInterval(watcher)
-              le.refreshSiteConnection()
-            }
-          }, 2000)
-        }}
+        onOpenSiteConnection={openSiteConnection}
         onOpenPlans={() => {
           setComparePlansOpen(true)
         }}
@@ -673,7 +773,10 @@ function AuthenticatedApp(props: {
                           disabled={planBusy}
                           onClick={async () => {
                             const out = await onOpenBillingPortal()
-                            if (out.ok) startPlanSyncPolling()
+                            if (out.ok) {
+                              const latest = await onRefreshPlan().catch(() => null)
+                              if (latest) setPlanSyncedAt(Date.now())
+                            }
                             if (!out.ok) window.alert(String(out.error || "Could not open billing"))
                           }}
                         >
@@ -682,7 +785,8 @@ function AuthenticatedApp(props: {
                       ) : null}
                     </div>
                     {planSyncing ? <div className="le-planSyncHint">Syncing billing status...</div> : null}
-                    {!planSyncing && planSyncedAt ? <div className="le-planSyncHint">Last updated: {new Date(planSyncedAt).toLocaleTimeString()}</div> : null}
+                    {!planSyncing && planLifecycleHint ? <div className="le-planSyncHint">{planLifecycleHint}</div> : null}
+                    {!planSyncing && !planLifecycleHint && planSyncedAt ? <div className="le-planSyncHint">Last updated: {new Date(planSyncedAt).toLocaleTimeString()}</div> : null}
                     {planMessage ? <div className="le-planMessage">{planMessage}</div> : null}
                   </div>
 
@@ -781,7 +885,7 @@ function AuthenticatedApp(props: {
                                 disabled={planBusy}
                                 onClick={async () => {
                                   const out = await onOpenBillingPortal()
-                                  if (out.ok) startPlanSyncPolling()
+                                  if (out.ok) startPlanSyncPolling({ cancelAtPeriodEnd: true })
                                   if (out.ok) setConfirmDowngrade(false)
                                 }}
                               >
@@ -846,7 +950,7 @@ function AuthenticatedApp(props: {
                                     disabled={planBusy}
                                     onClick={async () => {
                                       const out = await onStartCheckout()
-                                      if (out.ok) startPlanSyncPolling()
+                                      if (out.ok) startPlanSyncPolling({ plan: "paid" })
                                       if (out.ok) setComparePlansOpen(false)
                                     }}
                                   >
@@ -1308,6 +1412,9 @@ function AuthenticatedApp(props: {
                         const severity = String((n as any)?.severity || "info").trim().toLowerCase()
                         const type = String((n as any)?.type || "").trim().toLowerCase()
                         const title = String((n as any)?.title || "").trim().toLowerCase()
+                        const bodyText = type === "billing.cancel_at_period_end" && currentPeriodEnd
+                          ? `Your paid plan is set to cancel on ${formatPlanDateLabel(currentPeriodEnd)}.`
+                          : n.body
                         const isWelcome = type === "account.welcome" || title === "welcome to loop events"
                         const toneClass =
                           isWelcome
@@ -1333,7 +1440,7 @@ function AuthenticatedApp(props: {
                                 ×
                               </button>
                             </div>
-                            <div className="le-notificationBody">{n.body}</div>
+                            <div className="le-notificationBody">{bodyText}</div>
                             <div className="le-notificationAt">{n.createdAt ? new Date(n.createdAt).toLocaleString() : ""}</div>
                           </div>
                         )
@@ -1612,8 +1719,43 @@ function AuthenticatedApp(props: {
         {le.showLoadingBanner ? <div className="le-alert">Loading Webflow CMS data</div> : null}
 
         {!le.serverOk ? (
-          <div className="le-alert warn">
-            Backend not reachable. Set window.__LOOP_EVENTS_BACKEND__ or use relative local backend.
+          <div className="le-alert warn le-alertConnect">
+            <div className="le-alertConnectTitle">Connection required</div>
+            <div className="le-alertConnectBody">Backend is not reachable right now. Retry, or reconnect Webflow to refresh access.</div>
+            <div className="le-alertConnectActions">
+              <button className="le-btn ghost" type="button" onClick={retryBackendConnection}>Retry connection</button>
+              <button className="le-btn primary le-connectBtn" type="button" onClick={openSiteConnection}>
+                <span className="le-connectBtnIcon" aria-hidden="true">
+                  <svg viewBox="0 0 12 12" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3.2 0.9v2.6M8.8 0.9v2.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    <path d="M1.9 3.6h8.2v1.2A4.1 4.1 0 0 1 6 8.9h0a4.1 4.1 0 0 1-4.1-4.1V3.6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                    <path d="M6 8.9v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    <path d="M4.4 11h3.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                </span>
+                Connect site
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {le.serverOk && !le.isCheckingSiteConnection && !le.isCurrentSiteConnected ? (
+          <div className="le-alert warn le-alertConnect">
+            <div className="le-alertConnectTitle">Connect Webflow site</div>
+            <div className="le-alertConnectBody">Authorize Loop Events for this site to load CMS collections and enable automation actions.</div>
+            <div className="le-alertConnectActions">
+              <button className="le-btn primary le-connectBtn" type="button" onClick={openSiteConnection}>
+                <span className="le-connectBtnIcon" aria-hidden="true">
+                  <svg viewBox="0 0 12 12" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3.2 0.9v2.6M8.8 0.9v2.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    <path d="M1.9 3.6h8.2v1.2A4.1 4.1 0 0 1 6 8.9h0a4.1 4.1 0 0 1-4.1-4.1V3.6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                    <path d="M6 8.9v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    <path d="M4.4 11h3.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                </span>
+                Connect site
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -1716,7 +1858,7 @@ function AuthenticatedApp(props: {
                         disabled={planBusy}
                         onClick={async () => {
                           const out = await onStartCheckout()
-                          if (out.ok) startPlanSyncPolling()
+                          if (out.ok) startPlanSyncPolling({ plan: "paid" })
                           if (out.ok) setComparePlansOpen(false)
                         }}
                       >
@@ -1796,6 +1938,7 @@ export default function App() {
   const authAttemptId = String(qs.get("auth_attempt") || "").trim()
   const hashState = readAuthHash()
   const isAuthCallback = qs.get("auth_callback") === "1" || hashState.hasAuthTokens
+  const isOAuthPopup = Boolean(window.opener && window.opener !== window && window.name === "loop-events-oauth")
   const authCallbackError = String(qs.get("error_description") || qs.get("error") || hashState.error || "").trim()
   const supabase = getSupabaseClient()
   const configError = getSupabaseConfigError()
@@ -1815,7 +1958,7 @@ export default function App() {
   const [planMessage, setPlanMessage] = useState("")
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS)
 
-  async function fetchPlanState(activeSession?: Session | null): Promise<{ plan: "free" | "paid"; hasReachedScheduleLimit: boolean } | null> {
+  async function fetchPlanState(activeSession?: Session | null): Promise<PlanStateSnapshot | null> {
     if (!supabase) return null
     try {
       setPlanStateLoading(true)
@@ -1831,11 +1974,12 @@ export default function App() {
         setCancelAtPeriodEnd(false)
         setCurrentPeriodEnd(null)
         setCanTogglePlan(false)
-        return { plan: "free", hasReachedScheduleLimit: false }
+        return { plan: "free", hasReachedScheduleLimit: false, cancelAtPeriodEnd: false, currentPeriodEnd: null }
       }
 
       const res = await fetch(backendApiUrl("/api/plan"), {
         headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -1848,7 +1992,7 @@ export default function App() {
         setCancelAtPeriodEnd(false)
         setCurrentPeriodEnd(null)
         setCanTogglePlan(false)
-        return { plan: "free", hasReachedScheduleLimit: false }
+        return { plan: "free", hasReachedScheduleLimit: false, cancelAtPeriodEnd: false, currentPeriodEnd: null }
       }
 
       const planRaw = String((data as any)?.plan || "free").toLowerCase()
@@ -1864,12 +2008,16 @@ export default function App() {
       setHasReachedScheduleLimit(Boolean(typeof reachedRaw === "boolean" ? reachedRaw : reachedByCount))
       setBillingAvailable(Boolean((data as any)?.billingAvailable))
       setSubscriptionStatus(String((data as any)?.subscription?.status || ""))
-      setCancelAtPeriodEnd(Boolean((data as any)?.subscription?.cancelAtPeriodEnd))
-      setCurrentPeriodEnd((data as any)?.subscription?.currentPeriodEnd || null)
+      const nextCancelAtPeriodEnd = Boolean((data as any)?.subscription?.cancelAtPeriodEnd)
+      const nextCurrentPeriodEnd = (data as any)?.subscription?.currentPeriodEnd || null
+      setCancelAtPeriodEnd(nextCancelAtPeriodEnd)
+      setCurrentPeriodEnd(nextCurrentPeriodEnd)
       setCanTogglePlan(Boolean((data as any)?.canTogglePlan))
       return {
         plan: planRaw === "paid" ? "paid" : "free",
         hasReachedScheduleLimit: Boolean(typeof reachedRaw === "boolean" ? reachedRaw : reachedByCount),
+        cancelAtPeriodEnd: nextCancelAtPeriodEnd,
+        currentPeriodEnd: nextCurrentPeriodEnd,
       }
     } catch {
       setPlanLabel("Free")
@@ -1881,7 +2029,7 @@ export default function App() {
       setCancelAtPeriodEnd(false)
       setCurrentPeriodEnd(null)
       setCanTogglePlan(false)
-      return { plan: "free", hasReachedScheduleLimit: false }
+      return { plan: "free", hasReachedScheduleLimit: false, cancelAtPeriodEnd: false, currentPeriodEnd: null }
     } finally {
       setPlanStateLoading(false)
     }
@@ -2020,11 +2168,11 @@ export default function App() {
               access_token: hashState.accessToken,
               refresh_token: hashState.refreshToken,
             },
-            window.location.origin
+            "*"
           )
         }
         if (window.opener && window.opener !== window) {
-          window.opener.postMessage({ type: "loop-events-auth-complete" }, window.location.origin)
+          window.opener.postMessage({ type: "loop-events-auth-complete" }, "*")
         }
       } catch {
         // ignore cross-window notify errors
@@ -2043,9 +2191,45 @@ export default function App() {
     }
   }, [isAuthCallback, authLoading, authCallbackError, hashState.accessToken, hashState.refreshToken, authAttemptId])
 
+  useEffect(() => {
+    if (authLoading) return
+    if (!session?.access_token || !session?.refresh_token) return
+    if (!window.opener || window.opener === window) return
+
+    try {
+      window.opener.postMessage(
+        {
+          type: "loop-events-auth-session",
+          access_token: String(session.access_token || ""),
+          refresh_token: String(session.refresh_token || ""),
+        },
+        "*"
+      )
+      window.opener.postMessage({ type: "loop-events-auth-complete" }, "*")
+    } catch {
+      // ignore cross-window notify errors
+    }
+
+    const id = window.setTimeout(() => {
+      try {
+        window.close()
+      } catch {
+        // ignore close failures
+      }
+    }, 800)
+
+    return () => window.clearTimeout(id)
+  }, [authLoading, session?.access_token, session?.refresh_token])
+
   if (isAuthCallback) {
     const mergedError = authCallbackError || configError
     return <AuthCallbackScreen loading={authLoading} error={mergedError} />
+  }
+
+  if (isOAuthPopup) {
+    const popupError = authCallbackError || configError
+    const popupLoading = !popupError && (!session?.user || authLoading)
+    return <AuthCallbackScreen loading={popupLoading} error={popupError} />
   }
 
   if (!supabase) {

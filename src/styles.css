@@ -4493,6 +4493,18 @@ button:disabled,
   transform: translateY(-1px);
 }
 
+.le-drawerItemPlan {
+  cursor: default;
+}
+
+.le-drawerItemPlan:hover {
+  transform: none;
+}
+
+.le-drawerItemPlan:active {
+  transform: none;
+}
+
 .le-drawerPrimaryRow {
   display: flex;
   align-items: center;
@@ -5743,6 +5755,43 @@ textarea {
   background: rgba(70, 92, 132, 0.35);
 }
 
+.le-alertConnect {
+  display: grid;
+  gap: 8px;
+}
+
+.le-alertConnectTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(11, 18, 32, 0.9);
+}
+
+.le-alertConnectBody {
+  font-size: 10.5px;
+  color: rgba(11, 18, 32, 0.7);
+}
+
+.le-alertConnectActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.le-connectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.le-connectBtnIcon {
+  width: 14px;
+  height: 14px;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Schedule details rows with separators */
 .le-detailsSection {
   padding: 10px 12px;
@@ -6005,4 +6054,29 @@ textarea {
 .le-notificationDismiss,
 .le-modalIconBtn {
   border-radius: var(--radius-control) !important;
+}
+
+.le-alert.warn.le-alertConnect {
+  border-color: var(--state-green-border) !important;
+  background: var(--state-green-bg) !important;
+}
+
+.le-alert.warn.le-alertConnect .le-alertConnectTitle {
+  color: var(--state-green-text) !important;
+}
+
+.le-alert.warn.le-alertConnect .le-alertConnectBody {
+  color: rgba(31, 123, 75, 0.92) !important;
+}
+
+.le-alert.warn.le-alertConnect .le-connectBtn.le-btn.primary {
+  border-color: var(--state-green-border) !important;
+  background: var(--state-green) !important;
+  color: #ffffff !important;
+}
+
+.le-alert.warn.le-alertConnect .le-connectBtn.le-btn.primary:not(:disabled):hover,
+.le-alert.warn.le-alertConnect .le-connectBtn.le-btn.primary:not(:disabled):focus-visible {
+  border-color: var(--state-green-strong) !important;
+  background: var(--state-green-strong) !important;
 }

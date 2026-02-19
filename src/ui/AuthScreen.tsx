@@ -8,24 +8,11 @@ declare global {
   }
 }
 
-function apiUrl(path: string) {
-  const raw = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
-  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
-  const defaultBase = isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com"
-  let base = raw || defaultBase
-  if (/^localhost:\d+$/i.test(base) || /^127\.0\.0\.1:\d+$/i.test(base)) {
-    base = `http://${base}`
-  }
-  if (!/^https?:\/\//i.test(base)) {
-    base = defaultBase
-  }
-  base = base.replace(":1337", ":3001")
-  const clean = base.replace(/\/+$/, "")
-  const p = path.startsWith("/") ? path : `/${path}`
-  return `${clean}${p}`
-}
-
 function authCallbackUrl() {
+  return window.location.origin
+}
+
+function backendBaseUrl() {
   const raw = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
   const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
   const defaultBase = isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com"
@@ -36,16 +23,11 @@ function authCallbackUrl() {
   if (!/^https?:\/\//i.test(base)) {
     base = defaultBase
   }
-  base = base.replace(":1337", ":3001")
-  const clean = base.replace(/\/+$/, "")
-  return `${clean}/auth/callback`
+  return base.replace(":1337", ":3001").replace(/\/+$/, "")
 }
 
-function createAttemptId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID()
-  }
-  return `attempt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+function oauthCallbackUrl() {
+  return `${backendBaseUrl()}/auth/callback`
 }
 
 export default function AuthScreen(props: {
@@ -63,7 +45,7 @@ export default function AuthScreen(props: {
     type: "idle",
     msg: "",
   })
-  const relayTimerRef = useRef<number | null>(null)
+  const oauthPopupRef = useRef<Window | null>(null)
 
   const ctaLabel = useMemo(() => (mode === "signin" ? "Log in" : "Sign up"), [mode])
   const busyLabel = useMemo(() => {
@@ -71,6 +53,7 @@ export default function AuthScreen(props: {
     return mode === "signin" ? "Signing in..." : "Creating account..."
   }, [busy, ctaLabel, mode])
   const callbackUrl = authCallbackUrl()
+  const oauthCallback = oauthCallbackUrl()
 
   useEffect(() => {
     try {
@@ -84,61 +67,15 @@ export default function AuthScreen(props: {
     }
 
     return () => {
-      if (relayTimerRef.current) {
-        window.clearTimeout(relayTimerRef.current)
-        relayTimerRef.current = null
+      if (oauthPopupRef.current && !oauthPopupRef.current.closed) {
+        try {
+          oauthPopupRef.current.close()
+        } catch {
+          // ignore close failures
+        }
       }
     }
   }, [])
-
-  function stopRelayPolling() {
-    if (relayTimerRef.current) {
-      window.clearTimeout(relayTimerRef.current)
-      relayTimerRef.current = null
-    }
-  }
-
-  function startRelayPolling(attemptId: string) {
-    stopRelayPolling()
-    const startedAt = Date.now()
-
-    const run = async () => {
-      if (!supabase) return
-
-      if (Date.now() - startedAt > 120000) {
-        setStatus({ type: "err", msg: "Google login timed out. Please try again." })
-        return
-      }
-
-      try {
-        const res = await fetch(apiUrl(`/api/auth/relay/${encodeURIComponent(attemptId)}`))
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(String(data && data.error ? data.error : "Auth relay failed"))
-
-        if (String(data && data.status) === "ready") {
-          const accessToken = String(data && data.accessToken ? data.accessToken : "").trim()
-          const refreshToken = String(data && data.refreshToken ? data.refreshToken : "").trim()
-          if (!accessToken || !refreshToken) throw new Error("Auth relay returned invalid session")
-
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-          if (error) throw error
-          stopRelayPolling()
-          return
-        }
-      } catch (err: any) {
-        setStatus({ type: "err", msg: String(err?.message || err || "Could not finish Google login") })
-        stopRelayPolling()
-        return
-      }
-
-      relayTimerRef.current = window.setTimeout(run, 700)
-    }
-
-    void run()
-  }
 
   async function onEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -219,8 +156,6 @@ export default function AuthScreen(props: {
     if (!supabase) return
     setStatus({ type: "idle", msg: "" })
     setBusy(true)
-    const attemptId = createAttemptId()
-    const relayCallbackUrl = `${callbackUrl}?auth_attempt=${encodeURIComponent(attemptId)}`
     const popup = window.open("", "loop-events-oauth", "popup=yes,width=540,height=720")
     if (!popup) {
       setStatus({ type: "err", msg: "Popup blocked. Please allow popups and try again." })
@@ -231,15 +166,15 @@ export default function AuthScreen(props: {
       const oauthRes = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: relayCallbackUrl,
+          redirectTo: oauthCallback,
           skipBrowserRedirect: true,
         },
       })
       if (oauthRes.error) throw oauthRes.error
       const nextUrl = String(oauthRes?.data?.url || "").trim()
       if (!nextUrl) throw new Error("Could not start OAuth flow")
+      oauthPopupRef.current = popup
       popup.location.href = nextUrl
-      startRelayPolling(attemptId)
       setBusy(false)
     } catch (err: any) {
       try {

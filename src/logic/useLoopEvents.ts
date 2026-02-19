@@ -159,6 +159,33 @@ function apiUrl(path: string) {
   return `${clean}${p}`
 }
 
+function apiFetch(path: string, init?: RequestInit) {
+  return fetch(apiUrl(path), {
+    ...(init || {}),
+    cache: "no-store",
+  })
+}
+
+function normalizeBackendBase(rawInput: string) {
+  let raw = String(rawInput || "").trim()
+  if (!raw) return ""
+  if (/^localhost:\d+$/i.test(raw) || /^127\.0\.0\.1:\d+$/i.test(raw)) {
+    raw = `http://${raw}`
+  }
+  if (!/^https?:\/\//i.test(raw)) return ""
+  return raw.replace(":1337", ":3001").replace(/\/+$/, "")
+}
+
+function backendCandidates() {
+  const explicit = normalizeBackendBase(String(window.__LOOP_EVENTS_BACKEND__ || ""))
+  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
+  const defaultBase = normalizeBackendBase(isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com")
+  const local = normalizeBackendBase("http://localhost:3001")
+  const hosted = normalizeBackendBase("https://loop-events.onrender.com")
+  const out = [explicit, defaultBase, local, hosted].filter(Boolean)
+  return Array.from(new Set(out))
+}
+
 function safeLower(v: any) {
   return String(v || "").toLowerCase()
 }
@@ -540,7 +567,7 @@ export function useLoopEvents(authToken?: string) {
   async function fetchSchedules() {
     setSchedulesLoading(true)
     try {
-      const res = await fetch(apiUrl("/api/schedules"), {
+      const res = await apiFetch("/api/schedules", {
         headers: { ...authHeaders(authToken) },
       })
       const data = await safeJson(res)
@@ -589,18 +616,52 @@ export function useLoopEvents(authToken?: string) {
   // Health
   useEffect(() => {
     let cancelled = false
+    let inFlight = false
+
     async function run() {
+      if (inFlight) return
+      inFlight = true
       try {
-        const res = await fetch(apiUrl("/health"))
-        const data = await safeJson(res)
-        if (!cancelled) setServerOk(Boolean((data as any)?.ok))
+        let ok = false
+        const candidates = backendCandidates()
+        for (const base of candidates) {
+          try {
+            const res = await fetch(`${base}/health`, { cache: "no-store" })
+            const data = await safeJson(res)
+            if (res.ok && Boolean((data as any)?.ok)) {
+              window.__LOOP_EVENTS_BACKEND__ = base
+              ok = true
+              break
+            }
+          } catch {
+            // try next backend candidate
+          }
+        }
+        if (!cancelled) setServerOk(ok)
       } catch {
         if (!cancelled) setServerOk(false)
+      } finally {
+        inFlight = false
       }
     }
+
+    function onVisibilityOrFocus() {
+      if (document.visibilityState === "hidden") return
+      void run()
+    }
+
     void run()
+    const id = window.setInterval(() => {
+      void run()
+    }, 5000)
+    window.addEventListener("focus", onVisibilityOrFocus)
+    document.addEventListener("visibilitychange", onVisibilityOrFocus)
+
     return () => {
       cancelled = true
+      window.clearInterval(id)
+      window.removeEventListener("focus", onVisibilityOrFocus)
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus)
     }
   }, [])
 
@@ -630,7 +691,8 @@ export function useLoopEvents(authToken?: string) {
     async function run() {
       setLoadingSites(true)
       try {
-        const res = await fetch(apiUrl("/api/webflow/sites"), { headers: authHeaders(authToken) })
+        const res = await apiFetch("/api/webflow/sites", { headers: authHeaders(authToken) })
+        if (res.status === 304) return
         const data = await safeJson(res)
 
         const list = Array.isArray((data as any)?.sites)
@@ -693,9 +755,10 @@ export function useLoopEvents(authToken?: string) {
     async function run() {
       setLoadingCollections(true)
       try {
-        const res = await fetch(apiUrl(`/api/webflow/sites/${siteId}/collections`), {
+        const res = await apiFetch(`/api/webflow/sites/${siteId}/collections`, {
           headers: authHeaders(authToken),
         })
+        if (res.status === 304) return
         const data = await safeJson(res)
 
         const list = Array.isArray((data as any)?.collections)
@@ -734,9 +797,10 @@ export function useLoopEvents(authToken?: string) {
     async function run() {
       setLoadingItems(true)
       try {
-        const res = await fetch(apiUrl(`/api/webflow/collections/${collectionId}/items`), {
+        const res = await apiFetch(`/api/webflow/collections/${collectionId}/items`, {
           headers: authHeaders(authToken),
         })
+        if (res.status === 304) return
         const data = (await safeJson(res)) as WebflowItemsResponse | null
 
         const list = Array.isArray(data?.items) ? data!.items! : []
@@ -774,9 +838,10 @@ export function useLoopEvents(authToken?: string) {
     async function run() {
       setLoadingSchema(true)
       try {
-        const res = await fetch(apiUrl(`/api/webflow/collections/${collectionId}`), {
+        const res = await apiFetch(`/api/webflow/collections/${collectionId}`, {
           headers: authHeaders(authToken),
         })
+        if (res.status === 304) return
         const data = (await safeJson(res)) as WebflowCollectionSchema | null
 
         if (!cancelled) {
@@ -1137,7 +1202,7 @@ export function useLoopEvents(authToken?: string) {
     }
 
     try {
-      const res = await fetch(apiUrl("/api/loop-events/run"), {
+      const res = await apiFetch("/api/loop-events/run", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
         body: JSON.stringify(payload),
@@ -1181,7 +1246,7 @@ export function useLoopEvents(authToken?: string) {
       const sched = buildScheduleFromCurrent(created, createdItemIds, createdStartKeys)
       if (sched) {
         try {
-          const saveRes = await fetch(apiUrl("/api/schedules"), {
+          const saveRes = await apiFetch("/api/schedules", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
             body: JSON.stringify(sched),
@@ -1234,7 +1299,7 @@ export function useLoopEvents(authToken?: string) {
     )
 
     if (!found || found.isStopped) return
-    void fetch(apiUrl(`/api/schedules/${id}`), {
+    void apiFetch(`/api/schedules/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
       body: JSON.stringify({ isPaused: !found.isPaused }),
@@ -1243,7 +1308,7 @@ export function useLoopEvents(authToken?: string) {
 
   function deleteSchedule(id: string) {
     setSchedules((prev) => (Array.isArray(prev) ? prev : []).filter((s) => s.id !== id))
-    void fetch(apiUrl(`/api/schedules/${id}`), { method: "DELETE", headers: { ...authHeaders(authToken) } })
+    void apiFetch(`/api/schedules/${id}`, { method: "DELETE", headers: { ...authHeaders(authToken) } })
   }
 
   function updateSchedule(id: string, patch: Partial<AutoRefillSchedule>) {
@@ -1257,7 +1322,7 @@ export function useLoopEvents(authToken?: string) {
       })
     )
 
-    void fetch(apiUrl(`/api/schedules/${safeId}`), {
+    void apiFetch(`/api/schedules/${safeId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders(authToken) },
       body: JSON.stringify(patch || {}),
@@ -1268,7 +1333,7 @@ export function useLoopEvents(authToken?: string) {
     const safeId = String(id || "").trim()
     if (!safeId) return { ok: false, error: "Missing schedule id" }
     try {
-      const res = await fetch(apiUrl(`/api/schedules/${encodeURIComponent(safeId)}/retry`), {
+      const res = await apiFetch(`/api/schedules/${encodeURIComponent(safeId)}/retry`, {
         method: "POST",
         headers: { ...authHeaders(authToken) },
       })
@@ -1308,7 +1373,7 @@ export function useLoopEvents(authToken?: string) {
     if (!safeScheduleId || !safeRunId) return { ok: false, error: "Missing schedule or run id" }
 
     try {
-      const res = await fetch(apiUrl(`/api/schedules/${encodeURIComponent(safeScheduleId)}/runs/${encodeURIComponent(safeRunId)}/rollback`), {
+      const res = await apiFetch(`/api/schedules/${encodeURIComponent(safeScheduleId)}/runs/${encodeURIComponent(safeRunId)}/rollback`, {
         method: "POST",
         headers: { ...authHeaders(authToken) },
       })

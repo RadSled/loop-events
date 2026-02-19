@@ -82,8 +82,24 @@ function addNotification(input) {
   if (!next.userId || !next.title) return null
 
   const all = readRaw().map(sanitizeNotification)
-  if (next.dedupeKey && all.some((n) => n.userId === next.userId && n.dedupeKey === next.dedupeKey)) {
-    return all.find((n) => n.userId === next.userId && n.dedupeKey === next.dedupeKey) || null
+  if (next.dedupeKey) {
+    const duplicateIdx = all.findIndex((n) => n.userId === next.userId && n.dedupeKey === next.dedupeKey)
+    if (duplicateIdx >= 0) {
+      const prev = all[duplicateIdx]
+      const updated = {
+        ...prev,
+        type: next.type || prev.type,
+        category: next.category || prev.category,
+        title: next.title || prev.title,
+        body: next.body || prev.body,
+        severity: next.severity || prev.severity,
+        meta: next.meta || prev.meta || null,
+        createdAt: Date.now(),
+      }
+      all[duplicateIdx] = updated
+      saveRaw(all)
+      return updated
+    }
   }
 
   const forUser = all.filter((n) => n.userId === next.userId)

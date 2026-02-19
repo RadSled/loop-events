@@ -146,6 +146,12 @@ app.use((req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY")
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin")
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+  if (req.path === "/health" || req.path.startsWith("/api/")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+    res.setHeader("Pragma", "no-cache")
+    res.setHeader("Expires", "0")
+    res.setHeader("Surrogate-Control", "no-store")
+  }
   if (String(process.env.NODE_ENV || "").trim().toLowerCase() === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
   }
