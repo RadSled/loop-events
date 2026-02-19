@@ -64,13 +64,58 @@ if (TRUST_PROXY) {
   app.set("trust proxy", 1)
 }
 
+function normalizeOrigin(value) {
+  const raw = String(value || "").trim().replace(/\/+$/, "")
+  if (!raw) return ""
+  if (raw.toLowerCase() === "null") return "null"
+  try {
+    const u = new URL(raw)
+    return `${u.protocol}//${u.host}`.toLowerCase()
+  } catch {
+    return raw.toLowerCase()
+  }
+}
+
+function originMatchesRule(originRaw, ruleRaw) {
+  const origin = normalizeOrigin(originRaw)
+  const rule = normalizeOrigin(ruleRaw)
+  if (!origin || !rule) return false
+
+  if (rule === "*") return true
+  if (rule === "null") return origin === "null"
+
+  if (rule.startsWith("*.")) {
+    if (origin === "null") return false
+    try {
+      const u = new URL(origin)
+      const suffix = rule.slice(1)
+      return u.protocol === "https:" && u.hostname.toLowerCase().endsWith(suffix)
+    } catch {
+      return false
+    }
+  }
+
+  return origin === rule
+}
+
 function isAllowedCorsOrigin(origin) {
   const raw = String(origin || "").trim().replace(/\/+$/, "")
   if (!raw) return true
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(raw)) return true
+
+  const normalized = normalizeOrigin(raw)
+  if (normalized === "null") return true
+  try {
+    const u = new URL(normalized)
+    const host = String(u.hostname || "").toLowerCase()
+    if (u.protocol === "https:" && (host === "webflow.com" || host.endsWith(".webflow.com"))) return true
+    if (u.protocol === "https:" && host.endsWith(".webflow-ext.com")) return true
+  } catch {
+    // fall through to explicit allowlist rules
+  }
+
   if (!CORS_ALLOWLIST.length) return false
-  if (CORS_ALLOWLIST.includes("*")) return true
-  return CORS_ALLOWLIST.includes(raw)
+  return CORS_ALLOWLIST.some((rule) => originMatchesRule(raw, rule))
 }
 
 app.use(
@@ -509,10 +554,84 @@ function toIsoFromUnix(unixSec) {
   return new Date(n * 1000).toISOString()
 }
 
+function formatDateLabelFromIso(isoInput) {
+  const iso = String(isoInput || "").trim()
+  if (!iso) return ""
+  const ts = Date.parse(iso)
+  if (!Number.isFinite(ts)) return ""
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+}
+
 function inferPlanFromSubscriptionStatus(status) {
   const s = String(status || "").trim().toLowerCase()
   if (s === "active" || s === "trialing" || s === "past_due") return "paid"
   return "free"
+}
+
+async function syncUserPlanRowFromStripe(row) {
+  const safeRow = row && typeof row === "object" ? row : null
+  if (!safeRow) return row
+  if (!STRIPE_SECRET_KEY || !STRIPE_PRICE_ID_PAID) return row
+
+  const userId = String(safeRow.user_id || "").trim()
+  const currentCustomerId = String(safeRow.stripe_customer_id || "").trim()
+  const currentSubscriptionId = String(safeRow.stripe_subscription_id || "").trim()
+  if (!userId || (!currentCustomerId && !currentSubscriptionId)) return row
+
+  try {
+    let sub = null
+    if (currentSubscriptionId) {
+      sub = await stripeRequest(`/v1/subscriptions/${encodeURIComponent(currentSubscriptionId)}`)
+    } else {
+      const list = await stripeRequest(`/v1/subscriptions?customer=${encodeURIComponent(currentCustomerId)}&status=all&limit=1`)
+      sub = Array.isArray(list?.data) ? list.data[0] : null
+    }
+
+    if (!sub || typeof sub !== "object") return row
+
+    const nextCustomerId = String(sub.customer || currentCustomerId || "").trim() || null
+    const nextSubscriptionId = String(sub.id || currentSubscriptionId || "").trim() || null
+    const nextStatus = String(sub.status || "").trim().toLowerCase()
+    const nextCancelAtPeriodEnd = Boolean(sub.cancel_at_period_end)
+    const nextPeriodEnd = toIsoFromUnix(sub.current_period_end)
+    const nextStripePriceId = String(sub?.items?.data?.[0]?.price?.id || safeRow.stripe_price_id || "").trim() || null
+    const nextPlan = inferPlanFromSubscriptionStatus(nextStatus)
+
+    const hasChanged = (
+      String(safeRow.plan || "").trim().toLowerCase() !== nextPlan
+      || String(safeRow.subscription_status || "").trim().toLowerCase() !== nextStatus
+      || Boolean(safeRow.cancel_at_period_end) !== nextCancelAtPeriodEnd
+      || String(safeRow.current_period_end || "") !== String(nextPeriodEnd || "")
+      || String(safeRow.stripe_customer_id || "") !== String(nextCustomerId || "")
+      || String(safeRow.stripe_subscription_id || "") !== String(nextSubscriptionId || "")
+      || String(safeRow.stripe_price_id || "") !== String(nextStripePriceId || "")
+    )
+
+    if (!hasChanged) return row
+
+    await upsertUserPlanRow(userId, {
+      plan: nextPlan,
+      stripe_customer_id: nextCustomerId,
+      stripe_subscription_id: nextSubscriptionId,
+      stripe_price_id: nextStripePriceId,
+      subscription_status: nextStatus || null,
+      current_period_end: nextPeriodEnd,
+      cancel_at_period_end: nextCancelAtPeriodEnd,
+    })
+
+    return {
+      ...safeRow,
+      plan: nextPlan,
+      stripe_customer_id: nextCustomerId,
+      stripe_subscription_id: nextSubscriptionId,
+      stripe_price_id: nextStripePriceId,
+      subscription_status: nextStatus || null,
+      current_period_end: nextPeriodEnd,
+      cancel_at_period_end: nextCancelAtPeriodEnd,
+    }
+  } catch {
+    return row
+  }
 }
 
 function pruneUserSchedulesToFreeLimit(userId) {
@@ -1704,24 +1823,38 @@ app.get("/auth/callback", (req, res) => {
           return
         }
 
-        if (!attemptId || !accessToken || !refreshToken) {
+        if (!accessToken || !refreshToken) {
           setState("Could not complete authentication", "Missing callback data. Please go back to Webflow and try again.")
           return
         }
 
         try {
-          var res = await fetch("/api/auth/relay", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              attemptId: attemptId,
-              accessToken: accessToken,
-              refreshToken: refreshToken,
-            }),
-          })
-          if (!res.ok) {
-            var data = await res.json().catch(function () { return {} })
-            throw new Error(String((data && data.error) || "Auth relay failed"))
+          if (window.opener && window.opener !== window) {
+            window.opener.postMessage(
+              {
+                type: "loop-events-auth-session",
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              },
+              "*"
+            )
+            window.opener.postMessage({ type: "loop-events-auth-complete" }, "*")
+          }
+
+          if (attemptId) {
+            var res = await fetch("/api/auth/relay", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                attemptId: attemptId,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+              }),
+            })
+            if (!res.ok) {
+              var data = await res.json().catch(function () { return {} })
+              throw new Error(String((data && data.error) || "Auth relay failed"))
+            }
           }
 
           setState("Confirmation successful", "You can close this tab and go back to Webflow.")
@@ -1935,8 +2068,13 @@ app.get("/api/plan", requireAuth, async (req, res) => {
     const email = String(authUser.email || "").trim().toLowerCase()
     if (!userId) return res.status(401).json({ ok: false, error: "Not authenticated" })
 
-    const planInfo = await getUserPlanInfo(userId)
-    const row = await getUserPlanRow(userId)
+    let row = await getUserPlanRow(userId)
+    row = await syncUserPlanRowFromStripe(row)
+    const resolvedPlan = String(row?.plan || "").trim().toLowerCase() === "paid" ? "paid" : "free"
+    const planInfo = {
+      plan: resolvedPlan,
+      limits: getPlanLimits(resolvedPlan),
+    }
     const activeScheduleCount = loadSchedules({ userId }).length
     const maxSchedules = Number.isFinite(planInfo.limits.maxSchedules) ? planInfo.limits.maxSchedules : null
     const hasReachedScheduleLimit = Number.isFinite(maxSchedules) ? activeScheduleCount >= Number(maxSchedules) : false
@@ -1955,14 +2093,19 @@ app.get("/api/plan", requireAuth, async (req, res) => {
     }
 
     if (Boolean(row?.cancel_at_period_end)) {
+      const cancelDateLabel = formatDateLabelFromIso(row?.current_period_end)
       await notifyUser({
         userId,
         type: "billing.cancel_at_period_end",
         category: "billing",
         severity: "warning",
         title: "Subscription cancellation scheduled",
-        body: "Your paid plan is set to cancel at period end.",
-        dedupeKey: "billing:cancel_at_period_end",
+        body: cancelDateLabel
+          ? `Your paid plan is set to cancel on ${cancelDateLabel}.`
+          : "Your paid plan is set to cancel at period end.",
+        dedupeKey: cancelDateLabel
+          ? `billing:cancel_at_period_end:${cancelDateLabel}`
+          : "billing:cancel_at_period_end",
       })
     }
 
