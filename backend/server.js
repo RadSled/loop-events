@@ -1682,18 +1682,24 @@ app.get("/oauth/callback", async (req, res) => {
 
   const clientId = process.env.WEBFLOW_CLIENT_ID
   const clientSecret = process.env.WEBFLOW_CLIENT_SECRET
-  const redirectUri = process.env.WEBFLOW_REDIRECT_URI
+  const envRedirectUri = process.env.WEBFLOW_REDIRECT_URI
+  
+  // Use redirect_uri from callback if provided (for Dashboard installs), otherwise fall back to env var
+  const redirectUri = String(req.query.redirect_uri || envRedirectUri || "")
 
   if (!clientId || !clientSecret || !redirectUri) {
     console.error("[OAuth] Missing env vars:", {
       WEBFLOW_CLIENT_ID: Boolean(clientId),
       WEBFLOW_CLIENT_SECRET: Boolean(clientSecret),
-      WEBFLOW_REDIRECT_URI: Boolean(redirectUri),
+      WEBFLOW_REDIRECT_URI: Boolean(envRedirectUri),
+      callbackRedirectUri: Boolean(req.query.redirect_uri),
     })
     return res
       .status(500)
       .send("Missing WEBFLOW_CLIENT_ID, WEBFLOW_CLIENT_SECRET, or WEBFLOW_REDIRECT_URI in .env")
   }
+
+  console.log("[OAuth] Using redirect_uri:", redirectUri)
 
   try {
     const tokenRes = await fetch("https://api.webflow.com/oauth/access_token", {
@@ -1714,6 +1720,8 @@ app.get("/oauth/callback", async (req, res) => {
 
     if (!tokenRes.ok) {
       console.error("[OAuth] Token exchange failed:", tokenRes.status, data)
+      console.error("[OAuth] Redirect URI used:", redirectUri)
+      console.error("[OAuth] Env redirect URI:", envRedirectUri)
       return res
         .status(400)
         .send(`Token exchange failed: ${tokenRes.status}\n${JSON.stringify(data, null, 2)}`)
