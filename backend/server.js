@@ -59,6 +59,7 @@ const CORS_ALLOWLIST = Array.from(
 )
 const SCHEDULER_ENABLED = String(process.env.SCHEDULER_ENABLED || "true").trim().toLowerCase() !== "false"
 const TRUST_PROXY = String(process.env.TRUST_PROXY || "").trim().toLowerCase() === "true"
+let tokenMemoryStore = {}
 
 if (TRUST_PROXY) {
   app.set("trust proxy", 1)
@@ -783,17 +784,28 @@ function readTokens() {
         fs.copyFileSync(LEGACY_TOKENS_PATH, TOKENS_PATH)
       } catch {}
     }
-    if (!fs.existsSync(TOKENS_PATH)) return {}
-    return JSON.parse(fs.readFileSync(TOKENS_PATH, "utf8"))
+    if (!fs.existsSync(TOKENS_PATH)) return tokenMemoryStore
+    const parsed = JSON.parse(fs.readFileSync(TOKENS_PATH, "utf8"))
+    if (parsed && typeof parsed === "object") {
+      tokenMemoryStore = parsed
+      return parsed
+    }
+    return tokenMemoryStore
   } catch {
-    return {}
+    return tokenMemoryStore
   }
 }
 
 function writeTokens(tokens) {
-  const dir = path.dirname(TOKENS_PATH)
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2), "utf8")
+  const safe = tokens && typeof tokens === "object" ? tokens : {}
+  tokenMemoryStore = safe
+  try {
+    const dir = path.dirname(TOKENS_PATH)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(TOKENS_PATH, JSON.stringify(safe, null, 2), "utf8")
+  } catch (err) {
+    console.warn("[OAuth] Could not persist tokens to disk, using in-memory store:", String(err && err.message ? err.message : err))
+  }
 }
 
 function getWebflowAccessTokenForUser(userId) {
@@ -842,9 +854,9 @@ function markProcessedStripeEvent(eventId) {
   writeProcessedStripeEvents(all)
 }
 
-function getAuthorizeUrl() {
+function getAuthorizeUrl(redirectUriOverride = "") {
   const clientId = process.env.WEBFLOW_CLIENT_ID
-  const redirectUri = process.env.WEBFLOW_REDIRECT_URI
+  const redirectUri = String(redirectUriOverride || process.env.WEBFLOW_REDIRECT_URI || "").trim()
   const scope = process.env.WEBFLOW_SCOPES || ""
   const state = process.env.WEBFLOW_STATE || ""
 
@@ -1654,12 +1666,29 @@ const schedulerDeps = {
    OAuth
 -------------------------- */
 
-app.get("/oauth/start", (req, res) => {
+app.get("/oauth/start", async (req, res) => {
   try {
-    const authorizeUrl = getAuthorizeUrl()
+    const existing = readTokens()
+    const existingToken = String(existing?.default?.access_token || "").trim()
+    if (existingToken) {
+      try {
+        const probeRes = await fetch("https://api.webflow.com/v2/sites", {
+          headers: { Authorization: `Bearer ${existingToken}` },
+        })
+        if (probeRes.ok) {
+          console.log("[OAuth] Existing token already valid, skipping new authorization")
+          return res.redirect("https://loop-events.webflow.io")
+        }
+      } catch {
+        // proceed to regular OAuth authorization
+      }
+    }
+
+    const dynamicRedirectUri = `${getPublicServerBase(req)}/oauth/callback`
+    const authorizeUrl = getAuthorizeUrl(dynamicRedirectUri)
     console.log("[OAuth] Starting authorization")
     console.log("[OAuth] Full authorize URL:", authorizeUrl)
-    console.log("[OAuth] Redirect URI in auth request:", process.env.WEBFLOW_REDIRECT_URI)
+    console.log("[OAuth] Redirect URI in auth request:", dynamicRedirectUri)
     res.redirect(authorizeUrl)
   } catch (err) {
     console.error("[OAuth start]", err)
@@ -1680,15 +1709,15 @@ app.get("/oauth/callback", async (req, res) => {
 
   if (!code) return res.status(400).send("Missing code")
 
-  if (process.env.WEBFLOW_STATE && state !== process.env.WEBFLOW_STATE) {
+  if (process.env.WEBFLOW_STATE && state && state !== process.env.WEBFLOW_STATE) {
     return res.status(400).send("State does not match")
   }
 
   const clientId = process.env.WEBFLOW_CLIENT_ID
   const clientSecret = process.env.WEBFLOW_CLIENT_SECRET
-  const envRedirectUri = process.env.WEBFLOW_REDIRECT_URI
+  const envRedirectUri = String(process.env.WEBFLOW_REDIRECT_URI || "").trim()
 
-  if (!clientId || !clientSecret || !envRedirectUri) {
+  if (!clientId || !clientSecret) {
     console.error("[OAuth] Missing env vars:", {
       WEBFLOW_CLIENT_ID: Boolean(clientId),
       WEBFLOW_CLIENT_SECRET: Boolean(clientSecret),
@@ -1696,7 +1725,7 @@ app.get("/oauth/callback", async (req, res) => {
     })
     return res
       .status(500)
-      .send("Missing WEBFLOW_CLIENT_ID, WEBFLOW_CLIENT_SECRET, or WEBFLOW_REDIRECT_URI in .env")
+      .send("Missing WEBFLOW_CLIENT_ID or WEBFLOW_CLIENT_SECRET in backend env")
   }
 
   // Helper function to redirect back to Webflow after OAuth
@@ -1776,70 +1805,98 @@ app.get("/oauth/callback", async (req, res) => {
 </html>`);
   }
 
-  // Check if we already have a valid token (for Dashboard installs where Webflow handles exchange)
-  const existingTokens = readTokens()
-  if (existingTokens.default?.access_token) {
-    console.log("[OAuth] Already have valid token, skipping exchange")
-    return redirectToWebflow(res)
-  }
-
   console.log("[OAuth] Callback received. Code:", code.substring(0, 10) + "...")
   console.log("[OAuth] Full callback URL:", req.originalUrl || req.url)
   console.log("[OAuth] Full query params:", JSON.stringify(req.query))
 
   try {
-    const bodyParams = new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      redirect_uri: envRedirectUri,
-    })
-    
+    const callbackRedirectUri = `${getPublicServerBase(req)}/oauth/callback`
+    const redirectCandidates = Array.from(new Set([
+      String(envRedirectUri || "").trim(),
+      String(callbackRedirectUri || "").trim(),
+      "",
+    ].filter(Boolean)))
+
     console.log("[OAuth] Attempting token exchange...")
-    
-    const tokenRes = await fetch("https://api.webflow.com/oauth/access_token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: bodyParams,
-    })
 
-    const data = await tokenRes.json().catch(() => ({}))
+    let tokenData = null
+    let lastFailure = ""
 
-    if (tokenRes.ok) {
-      console.log("[OAuth] Token exchange successful")
-      
-      const tokens = readTokens()
-      tokens.default = {
-        access_token: data.access_token,
-        created_at: Date.now(),
-        raw: data,
+    for (const redirectUri of [...redirectCandidates, ""]) {
+      const bodyParams = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+      })
+      if (redirectUri) bodyParams.set("redirect_uri", redirectUri)
+
+      const tokenRes = await fetch("https://api.webflow.com/oauth/access_token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: bodyParams,
+      })
+
+      const data = await tokenRes.json().catch(() => ({}))
+      if (tokenRes.ok && String(data?.access_token || "").trim()) {
+        tokenData = data
+        break
       }
-      writeTokens(tokens)
 
-      console.log("[OAuth] Stored access token.")
-      return redirectToWebflow(res)
+      const reason = String(data?.error_description || data?.error || `HTTP ${tokenRes.status}`)
+      lastFailure = reason
+      console.error("[OAuth] Token exchange attempt failed:", {
+        status: tokenRes.status,
+        error: data?.error,
+        description: data?.error_description,
+        redirectUri: redirectUri || "<omitted>",
+      })
     }
-    
-    // Token exchange failed - log detailed error
-    console.error("[OAuth] Token exchange failed:", {
-      status: tokenRes.status,
-      error: data.error,
-      description: data.error_description,
-      redirectUri: envRedirectUri,
-    })
-    
-    // Even if exchange fails, the app might still work (Webflow may handle it)
-    // Show success message anyway since the app is installed
-    console.log("[OAuth] Exchange failed but app may still be functional")
+
+    if (!tokenData) {
+      return res.status(502).send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loop Events - Connection failed</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f6f8fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; padding: 16px; }
+      .card { width: min(540px, calc(100vw - 24px)); background: #fff; border: 1px solid #dbe3f2; border-radius: 14px; box-shadow: 0 14px 28px rgba(15,23,42,0.12); padding: 16px; }
+      .title { font-size: 20px; font-weight: 700; margin: 0 0 8px; }
+      .text { margin: 0 0 10px; color: #334155; line-height: 1.5; font-size: 14px; }
+      .code { margin: 10px 0; padding: 10px; border-radius: 10px; background: #eef2ff; border: 1px solid #d8e0ff; color: #1e293b; font-size: 12px; word-break: break-word; }
+      .btn { display: inline-block; margin-top: 8px; text-decoration: none; background: #1f2937; color: #fff; padding: 10px 14px; border-radius: 10px; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 class="title">Could not connect Webflow site</h1>
+      <p class="text">OAuth finished, but token exchange failed. Please verify app OAuth settings and try Connect Site again.</p>
+      <div class="code">${String(lastFailure || "Token exchange failed")}</div>
+      <a class="btn" href="https://loop-events.webflow.io">Back to Loop Events</a>
+    </div>
+  </body>
+</html>`)
+    }
+
+    console.log("[OAuth] Token exchange successful")
+
+    const tokens = readTokens()
+    tokens.default = {
+      access_token: tokenData.access_token,
+      created_at: Date.now(),
+      raw: tokenData,
+    }
+    writeTokens(tokens)
+
+    console.log("[OAuth] Stored access token.")
     return redirectToWebflow(res)
-    
   } catch (err) {
     console.error("[OAuth] Exception during token exchange:", err)
-    // Show success anyway since the app is likely installed
-    return redirectToWebflow(res)
+    return res.status(502).send("OAuth token exchange failed. Check Render logs for details.")
   }
 })
 
