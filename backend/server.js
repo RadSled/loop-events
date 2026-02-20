@@ -1711,6 +1711,8 @@ app.get("/oauth/callback", async (req, res) => {
   const uniqueVariations = [...new Set(redirectVariations)]
   
   console.log("[OAuth] Callback received. Code:", code.substring(0, 10) + "...")
+  console.log("[OAuth] Full callback URL:", req.originalUrl || req.url)
+  console.log("[OAuth] Full query params:", JSON.stringify(req.query))
   console.log("[OAuth] Will try redirect URI variations:", uniqueVariations)
 
   let lastError = null
