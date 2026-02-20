@@ -1708,7 +1708,7 @@ app.get("/oauth/callback", async (req, res) => {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Loop Events - Redirecting...</title>
-    <meta http-equiv="refresh" content="2;url=https://webflow.com/apps" />
+    <meta http-equiv="refresh" content="2;url=https://loop-events.webflow.io" />
     <style>
       * { box-sizing: border-box; }
       body {
@@ -1769,7 +1769,7 @@ app.get("/oauth/callback", async (req, res) => {
       <div class="icon">✓</div>
       <h1>Installation Complete!</h1>
       <p>Loop Events has been successfully installed to your Webflow site.</p>
-      <a href="https://webflow.com/apps" class="button">Return to Webflow Apps</a>
+      <a href="https://loop-events.webflow.io" class="button">Go to Loop Events</a>
       <p class="spinner">Redirecting automatically in 2 seconds...</p>
     </div>
   </body>
