@@ -1699,11 +1699,99 @@ app.get("/oauth/callback", async (req, res) => {
       .send("Missing WEBFLOW_CLIENT_ID, WEBFLOW_CLIENT_SECRET, or WEBFLOW_REDIRECT_URI in .env")
   }
 
+  // Helper function to send success HTML page
+  function sendOAuthSuccessPage(res, message) {
+    const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loop Events - Installation Complete</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-align: center;
+        padding: 20px;
+      }
+      .container {
+        max-width: 400px;
+      }
+      .icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        margin: 0 0 16px;
+        font-size: 28px;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 24px;
+        font-size: 16px;
+        opacity: 0.9;
+        line-height: 1.5;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 24px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+      .countdown {
+        margin-top: 16px;
+        font-size: 14px;
+        opacity: 0.7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="icon">✓</div>
+      <h1>${message}</h1>
+      <p>Loop Events has been successfully installed to your Webflow site.</p>
+      <button class="button" onclick="window.close()">Close This Tab</button>
+      <p class="countdown">This tab will close automatically in <span id="timer">5</span> seconds</p>
+    </div>
+    <script>
+      let seconds = 5;
+      const timer = document.getElementById('timer');
+      const interval = setInterval(() => {
+        seconds--;
+        timer.textContent = seconds;
+        if (seconds <= 0) {
+          clearInterval(interval);
+          window.close();
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>`;
+    res.send(html);
+  }
+
   // Check if we already have a valid token (for Dashboard installs where Webflow handles exchange)
   const existingTokens = readTokens()
   if (existingTokens.default?.access_token) {
     console.log("[OAuth] Already have valid token, skipping exchange")
-    return res.send("Authorized! You can close this tab and go back to Webflow.")
+    return sendOAuthSuccessPage(res, "Already Authorized!")
   }
 
   console.log("[OAuth] Callback received. Code:", code.substring(0, 10) + "...")
@@ -1743,7 +1831,7 @@ app.get("/oauth/callback", async (req, res) => {
       writeTokens(tokens)
 
       console.log("[OAuth] Stored access token.")
-      return res.send("Authorized! You can close this tab and go back to Webflow.")
+      return sendOAuthSuccessPage(res, "Authorization Successful!")
     }
     
     // Token exchange failed - log detailed error
@@ -1757,12 +1845,12 @@ app.get("/oauth/callback", async (req, res) => {
     // Even if exchange fails, the app might still work (Webflow may handle it)
     // Show success message anyway since the app is installed
     console.log("[OAuth] Exchange failed but app may still be functional")
-    return res.send("App installed! You can close this tab and go back to Webflow.")
+    return sendOAuthSuccessPage(res, "Installation Complete!")
     
   } catch (err) {
     console.error("[OAuth] Exception during token exchange:", err)
     // Show success anyway since the app is likely installed
-    return res.send("App installed! You can close this tab and go back to Webflow.")
+    return sendOAuthSuccessPage(res, "Installation Complete!")
   }
 })
 
