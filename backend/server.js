@@ -1657,7 +1657,9 @@ const schedulerDeps = {
 app.get("/oauth/start", (req, res) => {
   try {
     const authorizeUrl = getAuthorizeUrl()
-    console.log("[OAuth] Starting authorization, redirecting to:", authorizeUrl)
+    console.log("[OAuth] Starting authorization")
+    console.log("[OAuth] Full authorize URL:", authorizeUrl)
+    console.log("[OAuth] Redirect URI in auth request:", process.env.WEBFLOW_REDIRECT_URI)
     res.redirect(authorizeUrl)
   } catch (err) {
     console.error("[OAuth start]", err)
