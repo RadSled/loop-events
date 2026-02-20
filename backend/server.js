@@ -1683,64 +1683,86 @@ app.get("/oauth/callback", async (req, res) => {
   const clientId = process.env.WEBFLOW_CLIENT_ID
   const clientSecret = process.env.WEBFLOW_CLIENT_SECRET
   const envRedirectUri = process.env.WEBFLOW_REDIRECT_URI
-  
-  // Use redirect_uri from callback if provided (for Dashboard installs), otherwise fall back to env var
-  const redirectUri = String(req.query.redirect_uri || envRedirectUri || "")
 
-  if (!clientId || !clientSecret || !redirectUri) {
+  if (!clientId || !clientSecret || !envRedirectUri) {
     console.error("[OAuth] Missing env vars:", {
       WEBFLOW_CLIENT_ID: Boolean(clientId),
       WEBFLOW_CLIENT_SECRET: Boolean(clientSecret),
       WEBFLOW_REDIRECT_URI: Boolean(envRedirectUri),
-      callbackRedirectUri: Boolean(req.query.redirect_uri),
     })
     return res
       .status(500)
       .send("Missing WEBFLOW_CLIENT_ID, WEBFLOW_CLIENT_SECRET, or WEBFLOW_REDIRECT_URI in .env")
   }
 
-  console.log("[OAuth] Using redirect_uri:", redirectUri)
+  // Generate redirect URI variations to try
+  const redirectVariations = [
+    envRedirectUri,
+    envRedirectUri.replace(/\/$/, ''), // Remove trailing slash
+    envRedirectUri + '/', // Add trailing slash
+    envRedirectUri.replace(/^http:\/\//, 'https://'), // Force https
+  ]
+  
+  // Remove duplicates
+  const uniqueVariations = [...new Set(redirectVariations)]
+  
+  console.log("[OAuth] Callback received. Code:", code.substring(0, 10) + "...")
+  console.log("[OAuth] Will try redirect URI variations:", uniqueVariations)
 
-  try {
-    const tokenRes = await fetch("https://api.webflow.com/oauth/access_token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-        redirect_uri: redirectUri,
-      }),
-    })
+  let lastError = null
+  
+  // Try each redirect URI variation
+  for (const redirectUri of uniqueVariations) {
+    try {
+      console.log("[OAuth] Trying redirect_uri:", redirectUri)
+      
+      const tokenRes = await fetch("https://api.webflow.com/oauth/access_token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+          redirect_uri: redirectUri,
+        }),
+      })
 
-    const data = await tokenRes.json().catch(() => ({}))
+      const data = await tokenRes.json().catch(() => ({}))
 
-    if (!tokenRes.ok) {
-      console.error("[OAuth] Token exchange failed:", tokenRes.status, data)
-      console.error("[OAuth] Redirect URI used:", redirectUri)
-      console.error("[OAuth] Env redirect URI:", envRedirectUri)
-      return res
-        .status(400)
-        .send(`Token exchange failed: ${tokenRes.status}\n${JSON.stringify(data, null, 2)}`)
+      if (tokenRes.ok) {
+        console.log("[OAuth] Success with redirect_uri:", redirectUri)
+        
+        const tokens = readTokens()
+        tokens.default = {
+          access_token: data.access_token,
+          created_at: Date.now(),
+          raw: data,
+        }
+        writeTokens(tokens)
+
+        console.log("[OAuth] Stored access token.")
+        return res.send("Authorized! You can close this tab and go back to Webflow.")
+      }
+      
+      // Store error but continue trying other variations
+      lastError = { status: tokenRes.status, data, redirectUri }
+      console.log("[OAuth] Failed with redirect_uri:", redirectUri, "- Error:", data.error)
+      
+    } catch (err) {
+      console.error("[OAuth] Exception with redirect_uri:", redirectUri, err)
+      lastError = { error: err.message, redirectUri }
     }
-
-    const tokens = readTokens()
-    tokens.default = {
-      access_token: data.access_token,
-      created_at: Date.now(),
-      raw: data,
-    }
-    writeTokens(tokens)
-
-    console.log("[OAuth] Stored access token.")
-    res.send("Authorized! You can close this tab and go back to Webflow.")
-  } catch (err) {
-    console.error("[OAuth] callback error:", err)
-    res.status(500).send("OAuth callback failed")
   }
+  
+  // All variations failed
+  console.error("[OAuth] All redirect URI variations failed")
+  console.error("[OAuth] Last error:", lastError)
+  return res
+    .status(400)
+    .send(`Token exchange failed: ${lastError?.status || 'Unknown'}\n${JSON.stringify(lastError?.data || {}, null, 2)}`)
 })
 
 /* -------------------------
