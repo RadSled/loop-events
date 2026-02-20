@@ -1656,7 +1656,9 @@ const schedulerDeps = {
 
 app.get("/oauth/start", (req, res) => {
   try {
-    res.redirect(getAuthorizeUrl())
+    const authorizeUrl = getAuthorizeUrl()
+    console.log("[OAuth] Starting authorization, redirecting to:", authorizeUrl)
+    res.redirect(authorizeUrl)
   } catch (err) {
     console.error("[OAuth start]", err)
     res.status(500).send(String(err?.message || err))
@@ -1711,23 +1713,33 @@ app.get("/oauth/callback", async (req, res) => {
 
   let lastError = null
   
+  // Debug: Log all parameters
+  console.log("[OAuth] Debug - Client ID:", clientId.substring(0, 10) + "...")
+  console.log("[OAuth] Debug - Client Secret exists:", !!clientSecret)
+  console.log("[OAuth] Debug - Code:", code.substring(0, 15) + "...")
+  console.log("[OAuth] Debug - Env redirect URI:", envRedirectUri)
+  
   // Try each redirect URI variation
   for (const redirectUri of uniqueVariations) {
     try {
       console.log("[OAuth] Trying redirect_uri:", redirectUri)
+      
+      const bodyParams = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        redirect_uri: redirectUri,
+      })
+      
+      console.log("[OAuth] Debug - Request body:", bodyParams.toString())
       
       const tokenRes = await fetch("https://api.webflow.com/oauth/access_token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-          redirect_uri: redirectUri,
-        }),
+        body: bodyParams,
       })
 
       const data = await tokenRes.json().catch(() => ({}))
