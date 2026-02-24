@@ -54,12 +54,6 @@ const CORS_ALLOWLIST = Array.from(
         .filter(Boolean),
       `http://localhost:${PORT}`,
       `http://127.0.0.1:${PORT}`,
-      "https://webflow.com",
-      "https://www.webflow.com",
-      "https://webflow.io",
-      "https://www.webflow.io",
-      "https://*.webflow.io",
-      "https://*.design.webflow.io",
     ].filter(Boolean)
   )
 )
