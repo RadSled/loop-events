@@ -1957,9 +1957,9 @@ app.get("/auth/callback", (req, res) => {
                 access_token: accessToken,
                 refresh_token: refreshToken,
               },
-              "*"
+              "https://webflow.com"
             )
-            window.opener.postMessage({ type: "loop-events-auth-complete" }, "*")
+            window.opener.postMessage({ type: "loop-events-auth-complete" }, "https://webflow.com")
           }
 
           if (attemptId) {

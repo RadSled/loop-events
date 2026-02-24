@@ -594,8 +594,7 @@ export function useLoopEvents(authToken?: string) {
       if (inFlight) return
       inFlight = true
       try {
-        const base = apiUrl("")
-        const res = await fetch(`${base}/health`, { 
+        const res = await fetch(apiUrl("/health"), { 
           cache: "no-store",
           mode: "cors",
           credentials: "omit",
