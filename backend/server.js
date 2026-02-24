@@ -1668,25 +1668,11 @@ const schedulerDeps = {
 
 app.get("/oauth/start", async (req, res) => {
   try {
-    const existing = readTokens()
-    const existingToken = String(existing?.default?.access_token || "").trim()
-    if (existingToken) {
-      try {
-        const probeRes = await fetch("https://api.webflow.com/v2/sites", {
-          headers: { Authorization: `Bearer ${existingToken}` },
-        })
-        if (probeRes.ok) {
-          console.log("[OAuth] Existing token already valid, skipping new authorization")
-          return res.redirect("https://loop-events.webflow.io")
-        }
-      } catch {
-        // proceed to regular OAuth authorization
-      }
-    }
-
+    // For marketplace installation, redirect directly to Webflow OAuth
+    // This is the recommended approach for Hybrid Apps per Webflow docs
     const dynamicRedirectUri = `${getPublicServerBase(req)}/oauth/callback`
     const authorizeUrl = getAuthorizeUrl(dynamicRedirectUri)
-    console.log("[OAuth] Starting authorization")
+    console.log("[OAuth] Starting authorization from install URL")
     console.log("[OAuth] Full authorize URL:", authorizeUrl)
     console.log("[OAuth] Redirect URI in auth request:", dynamicRedirectUri)
     res.redirect(authorizeUrl)
@@ -1737,7 +1723,7 @@ app.get("/oauth/callback", async (req, res) => {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Loop Events - Redirecting...</title>
-    <meta http-equiv="refresh" content="2;url=https://loop-events.webflow.io" />
+    <meta http-equiv="refresh" content="2;url=https://webflow.com/dashboard" />
     <style>
       * { box-sizing: border-box; }
       body {
@@ -1798,7 +1784,7 @@ app.get("/oauth/callback", async (req, res) => {
       <div class="icon">✓</div>
       <h1>Installation Complete!</h1>
       <p>Loop Events has been successfully installed to your Webflow site.</p>
-      <a href="https://loop-events.webflow.io" class="button">Go to Loop Events</a>
+      <a href="https://webflow.com/dashboard" class="button">Go to Webflow Dashboard</a>
       <p class="spinner">Redirecting automatically in 2 seconds...</p>
     </div>
   </body>
@@ -1876,7 +1862,7 @@ app.get("/oauth/callback", async (req, res) => {
       <h1 class="title">Could not connect Webflow site</h1>
       <p class="text">OAuth finished, but token exchange failed. Please verify app OAuth settings and try Connect Site again.</p>
       <div class="code">${String(lastFailure || "Token exchange failed")}</div>
-      <a class="btn" href="https://loop-events.webflow.io">Back to Loop Events</a>
+      <a class="btn" href="https://webflow.com/dashboard">Back to Webflow Dashboard</a>
     </div>
   </body>
 </html>`)
