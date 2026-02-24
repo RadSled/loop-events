@@ -10,9 +10,7 @@
     <div id="root"></div>
     <script>
       (function() {
-        const host = String(window.location.hostname || "")
-        const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(host)
-        window.__LOOP_EVENTS_BACKEND__ = isLocalHost ? "https://loop-events.onrender.com" : "https://loop-events.onrender.com"
+        window.__LOOP_EVENTS_BACKEND__ = "https://loop-events.onrender.com"
         window.__SUPABASE_URL__ = "https://rgbaagmzszzouhhixpbl.supabase.co";
         window.__SUPABASE_ANON_KEY__ = "sb_publishable_UROiNGg8lrbDDAllVz8ggg_UsQ_jFa_";
 

@@ -145,8 +145,7 @@ function authHeaders(tokenInput?: string) {
 const PRODUCTION_BACKEND = "https://loop-events.onrender.com"
 
 function apiUrl(path: string) {
-  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
-  const base = isLocalHost ? "http://localhost:3001" : PRODUCTION_BACKEND
+  const base = PRODUCTION_BACKEND
   const clean = base.replace(/\/+$/, "")
   const p = path.startsWith("/") ? path : `/${path}`
   return `${clean}${p}`

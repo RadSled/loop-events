@@ -38,8 +38,8 @@ const SUPABASE_SECRET_KEY = String(process.env.SUPABASE_SECRET_KEY || "").trim()
 const STRIPE_SECRET_KEY = String(process.env.STRIPE_SECRET_KEY || "").trim()
 const STRIPE_PRICE_ID_PAID = String(process.env.STRIPE_PRICE_ID_PAID || "").trim()
 const STRIPE_WEBHOOK_SECRET = String(process.env.STRIPE_WEBHOOK_SECRET || "").trim()
-const APP_BASE_URL = String(process.env.APP_BASE_URL || "http://localhost:1337").trim().replace(/\/+$/, "")
-const STRIPE_RETURN_BASE = String(process.env.STRIPE_RETURN_BASE || `http://localhost:${PORT}`).trim().replace(/\/+$/, "")
+const APP_BASE_URL = String(process.env.APP_BASE_URL || "").trim().replace(/\/+$/, "")
+const STRIPE_RETURN_BASE = String(process.env.STRIPE_RETURN_BASE || "").trim().replace(/\/+$/, "")
 const STRIPE_DOWNGRADE_MODE = String(process.env.STRIPE_DOWNGRADE_MODE || "period_end").trim().toLowerCase() === "immediate" ? "immediate" : "period_end"
 const TEST_PLAN_ALLOWLIST = String(process.env.TEST_PLAN_ALLOWLIST || "creator@radsled.com")
   .split(",")
@@ -47,14 +47,10 @@ const TEST_PLAN_ALLOWLIST = String(process.env.TEST_PLAN_ALLOWLIST || "creator@r
   .filter(Boolean)
 const CORS_ALLOWLIST = Array.from(
   new Set(
-    [
-      ...String(process.env.CORS_ALLOWLIST || APP_BASE_URL || "")
-        .split(",")
-        .map((x) => String(x || "").trim().replace(/\/+$/, ""))
-        .filter(Boolean),
-      `http://localhost:${PORT}`,
-      `http://127.0.0.1:${PORT}`,
-    ].filter(Boolean)
+    String(process.env.CORS_ALLOWLIST || "")
+      .split(",")
+      .map((x) => String(x || "").trim().replace(/\/+$/, ""))
+      .filter(Boolean)
   )
 )
 const SCHEDULER_ENABLED = String(process.env.SCHEDULER_ENABLED || "true").trim().toLowerCase() !== "false"
@@ -657,9 +653,7 @@ function pruneUserSchedulesToFreeLimit(userId) {
 
 function getPublicServerBase(req) {
   if (STRIPE_RETURN_BASE) return STRIPE_RETURN_BASE
-  const proto = String(req.headers["x-forwarded-proto"] || req.protocol || "http").split(",")[0].trim() || "http"
-  const host = String(req.headers["x-forwarded-host"] || req.get("host") || "localhost:3001").split(",")[0].trim() || "localhost:3001"
-  return `${proto}://${host}`
+  throw new Error("STRIPE_RETURN_BASE env var not set")
 }
 
 function sendBillingResultPage(res, mode) {

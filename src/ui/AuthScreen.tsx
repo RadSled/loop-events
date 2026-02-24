@@ -15,8 +15,7 @@ function authCallbackUrl() {
 const PRODUCTION_BACKEND = "https://loop-events.onrender.com"
 
 function backendBaseUrl() {
-  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
-  return isLocalHost ? "http://localhost:3001" : PRODUCTION_BACKEND
+  return PRODUCTION_BACKEND
 }
 
 function oauthCallbackUrl() {
