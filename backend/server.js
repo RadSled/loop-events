@@ -1714,81 +1714,42 @@ app.get("/oauth/callback", async (req, res) => {
       .send("Missing WEBFLOW_CLIENT_ID or WEBFLOW_CLIENT_SECRET in backend env")
   }
 
-  // Helper function to redirect back to Webflow after OAuth
-  function redirectToWebflow(res) {
-    // Redirect to Webflow Apps page after short delay
-    res.send(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Loop Events - Redirecting...</title>
-    <meta http-equiv="refresh" content="2;url=https://webflow.com/dashboard" />
-    <style>
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        text-align: center;
-        padding: 20px;
+  // Helper function to redirect to Webflow Designer with deep link for Hybrid Apps
+  async function redirectToDesigner(accessToken) {
+    try {
+      const sitesRes = await fetch("https://api.webflow.com/v2/sites", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+
+      if (!sitesRes.ok) {
+        console.error("[OAuth] Failed to fetch sites:", sitesRes.status)
+        return "https://webflow.com/dashboard"
       }
-      .container {
-        max-width: 400px;
+
+      const sitesData = await sitesRes.json()
+      const sites = sitesData?.sites || []
+
+      if (sites.length === 0) {
+        console.log("[OAuth] No sites found for user")
+        return "https://webflow.com/dashboard"
       }
-      .icon {
-        font-size: 64px;
-        margin-bottom: 20px;
+
+      const firstSite = sites[0]
+      const shortName = firstSite?.shortName || firstSite?.shortName
+
+      if (!shortName) {
+        console.log("[OAuth] Site missing shortName:", firstSite)
+        return "https://webflow.com/dashboard"
       }
-      h1 {
-        margin: 0 0 16px;
-        font-size: 28px;
-        font-weight: 600;
-      }
-      p {
-        margin: 0 0 24px;
-        font-size: 16px;
-        opacity: 0.9;
-        line-height: 1.5;
-      }
-      .button {
-        display: inline-block;
-        padding: 12px 24px;
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 8px;
-        color: white;
-        text-decoration: none;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .button:hover {
-        background: rgba(255, 255, 255, 0.3);
-        border-color: rgba(255, 255, 255, 0.5);
-      }
-      .spinner {
-        margin-top: 20px;
-        font-size: 14px;
-        opacity: 0.7;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="icon">✓</div>
-      <h1>Installation Complete!</h1>
-      <p>Loop Events has been successfully installed to your Webflow site.</p>
-      <a href="https://webflow.com/dashboard" class="button">Go to Webflow Dashboard</a>
-      <p class="spinner">Redirecting automatically in 2 seconds...</p>
-    </div>
-  </body>
-</html>`);
+
+      const clientId = process.env.WEBFLOW_CLIENT_ID || ""
+      const designerUrl = `https://${shortName}.design.webflow.com?app=${encodeURIComponent(clientId)}`
+      console.log("[OAuth] Redirecting to Designer:", designerUrl)
+      return designerUrl
+    } catch (err) {
+      console.error("[OAuth] Error fetching sites for deep link:", err)
+      return "https://webflow.com/dashboard"
+    }
   }
 
   console.log("[OAuth] Callback received. Code:", code.substring(0, 10) + "...")
@@ -1879,7 +1840,8 @@ app.get("/oauth/callback", async (req, res) => {
     writeTokens(tokens)
 
     console.log("[OAuth] Stored access token.")
-    return redirectToWebflow(res)
+    const designerUrl = await redirectToDesigner(tokenData.access_token)
+    return res.redirect(designerUrl)
   } catch (err) {
     console.error("[OAuth] Exception during token exchange:", err)
     return res.status(502).send("OAuth token exchange failed. Check Render logs for details.")
