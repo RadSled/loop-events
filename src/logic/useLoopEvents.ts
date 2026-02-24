@@ -595,11 +595,15 @@ export function useLoopEvents(authToken?: string) {
       inFlight = true
       try {
         const base = apiUrl("")
-        const res = await fetch(`${base}/health`, { cache: "no-store" })
+        const res = await fetch(`${base}/health`, { 
+          cache: "no-store",
+          mode: "cors",
+          credentials: "omit",
+        })
         const data = await safeJson(res)
         const ok = res.ok && Boolean((data as any)?.ok)
         if (!cancelled) setServerOk(ok)
-      } catch {
+      } catch (e) {
         if (!cancelled) setServerOk(false)
       } finally {
         inFlight = false

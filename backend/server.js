@@ -2046,20 +2046,51 @@ app.post("/api/billing/checkout", requireAuth, billingRateLimit, async (req, res
 
     const returnBase = getPublicServerBase(req)
     const customerId = await ensureStripeCustomerForUser(authUser)
-    const checkout = await stripeRequest("/v1/checkout/sessions", {
-      method: "POST",
-      form: {
-        mode: "subscription",
-        customer: customerId,
-        "line_items[0][price]": STRIPE_PRICE_ID_PAID,
-        "line_items[0][quantity]": 1,
-        success_url: `${returnBase}/billing/success`,
-        cancel_url: `${returnBase}/billing/cancel`,
-        client_reference_id: userId,
-        "metadata[user_id]": userId,
-        "subscription_data[metadata][user_id]": userId,
-      },
-    })
+    
+    let checkout
+    try {
+      checkout = await stripeRequest("/v1/checkout/sessions", {
+        method: "POST",
+        form: {
+          mode: "subscription",
+          customer: customerId,
+          "line_items[0][price]": STRIPE_PRICE_ID_PAID,
+          "line_items[0][quantity]": 1,
+          success_url: `${returnBase}/billing/success`,
+          cancel_url: `${returnBase}/billing/cancel`,
+          client_reference_id: userId,
+          "metadata[user_id]": userId,
+          "subscription_data[metadata][user_id]": userId,
+        },
+      })
+    } catch (checkoutErr) {
+      const statusCode = Number(checkoutErr?.statusCode)
+      const msg = String(checkoutErr?.message || "")
+      if (statusCode === 404 || /no such customer/i.test(msg)) {
+        await upsertUserPlanRow(userId, {
+          stripe_customer_id: null,
+          stripe_subscription_id: null,
+          stripe_price_id: null,
+        })
+        const newCustomerId = await ensureStripeCustomerForUser(authUser)
+        checkout = await stripeRequest("/v1/checkout/sessions", {
+          method: "POST",
+          form: {
+            mode: "subscription",
+            customer: newCustomerId,
+            "line_items[0][price]": STRIPE_PRICE_ID_PAID,
+            "line_items[0][quantity]": 1,
+            success_url: `${returnBase}/billing/success`,
+            cancel_url: `${returnBase}/billing/cancel`,
+            client_reference_id: userId,
+            "metadata[user_id]": userId,
+            "subscription_data[metadata][user_id]": userId,
+          },
+        })
+      } else {
+        throw checkoutErr
+      }
+    }
 
     res.json({ ok: true, url: String(checkout?.url || "") })
   } catch (err) {
