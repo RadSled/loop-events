@@ -48,59 +48,37 @@ function readAuthHash() {
   }
 }
 
+const PRODUCTION_BACKEND = "https://loop-events.onrender.com"
+
+const TRUSTED_AUTH_ORIGINS = [
+  "https://webflow.com",
+  "https://www.webflow.com",
+  "https://webflow.io",
+  "https://www.webflow.io",
+  PRODUCTION_BACKEND,
+]
+
+function isTrustedAuthOrigin(origin: string): boolean {
+  if (!origin) return false
+  return TRUSTED_AUTH_ORIGINS.some(trusted => {
+    if (trusted.startsWith("https://*.")) {
+      const suffix = trusted.slice("https://".length)
+      return origin.endsWith(suffix)
+    }
+    return origin === trusted
+  })
+}
+
+function getPostMessageTargetOrigin(): string {
+  return "https://webflow.com"
+}
+
 function backendApiUrl(path: string) {
-  const raw = String((window as any).__LOOP_EVENTS_BACKEND__ || "").trim()
   const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
-  const defaultBase = isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com"
-  let base = raw || defaultBase
-  if (/^localhost:\d+$/i.test(base) || /^127\.0\.0\.1:\d+$/i.test(base)) {
-    base = `http://${base}`
-  }
-  if (!/^https?:\/\//i.test(base)) {
-    base = defaultBase
-  }
-  base = base.replace(":1337", ":3001")
+  const base = isLocalHost ? "http://localhost:3001" : PRODUCTION_BACKEND
   const clean = base.replace(/\/+$/, "")
   const p = path.startsWith("/") ? path : `/${path}`
   return `${clean}${p}`
-}
-
-function normalizeBackendBase(rawInput: string) {
-  let raw = String(rawInput || "").trim()
-  if (!raw) return ""
-  if (/^localhost:\d+$/i.test(raw) || /^127\.0\.0\.1:\d+$/i.test(raw)) {
-    raw = `http://${raw}`
-  }
-  if (!/^https?:\/\//i.test(raw)) return ""
-  return raw.replace(":1337", ":3001").replace(/\/+$/, "")
-}
-
-function backendCandidates() {
-  const explicit = normalizeBackendBase(String((window as any).__LOOP_EVENTS_BACKEND__ || ""))
-  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
-  const defaultBase = normalizeBackendBase(isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com")
-  const local = normalizeBackendBase("http://localhost:3001")
-  const hosted = normalizeBackendBase("https://loop-events.onrender.com")
-  const out = [explicit, defaultBase, local, hosted].filter(Boolean)
-  return Array.from(new Set(out))
-}
-
-async function fetchWithBackendFallback(path: string, init?: RequestInit) {
-  const p = path.startsWith("/") ? path : `/${path}`
-  let lastErr: any = null
-  for (const base of backendCandidates()) {
-    try {
-      const res = await fetch(`${base}${p}`, {
-        ...(init || {}),
-        cache: init?.cache || "no-store",
-      })
-      ;(window as any).__LOOP_EVENTS_BACKEND__ = base
-      return { res, endpoint: `${base}${p}` }
-    } catch (err: any) {
-      lastErr = err
-    }
-  }
-  throw (lastErr || new Error("Backend not reachable"))
 }
 
 function parseMaxSchedules(value: any): number | null {
@@ -407,8 +385,9 @@ function AuthenticatedApp(props: {
 
   async function fetchNotifications() {
     try {
-      const { res } = await fetchWithBackendFallback("/api/notifications", {
+      const res = await fetch(backendApiUrl("/api/notifications"), {
         headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
       })
       if (!res.ok) {
         const txt = await res.text().catch(() => "")
@@ -806,6 +785,14 @@ function AuthenticatedApp(props: {
                     >
                       <span className="le-toolIcon" aria-hidden="true">✦</span>
                       <span className="le-toolLabel">Tutorial</span>
+                    </button>
+                    <button
+                      className="le-toolIconBtn"
+                      type="button"
+                      onClick={() => window.open("https://loop-events.webflow.io/privacy", "_blank", "noopener,noreferrer")}
+                    >
+                      <span className="le-toolIcon" aria-hidden="true">§</span>
+                      <span className="le-toolLabel">Privacy</span>
                     </button>
                   </div>
 
@@ -2114,6 +2101,7 @@ export default function App() {
   useEffect(() => {
     if (!supabase) return
     function onAuthDone(evt: MessageEvent) {
+      if (!isTrustedAuthOrigin(evt.origin)) return
       const data = evt && typeof evt.data === "object" ? (evt.data as any) : null
       if (!data) return
 
@@ -2168,11 +2156,11 @@ export default function App() {
               access_token: hashState.accessToken,
               refresh_token: hashState.refreshToken,
             },
-            "*"
+            getPostMessageTargetOrigin()
           )
         }
         if (window.opener && window.opener !== window) {
-          window.opener.postMessage({ type: "loop-events-auth-complete" }, "*")
+          window.opener.postMessage({ type: "loop-events-auth-complete" }, getPostMessageTargetOrigin())
         }
       } catch {
         // ignore cross-window notify errors
@@ -2203,9 +2191,9 @@ export default function App() {
           access_token: String(session.access_token || ""),
           refresh_token: String(session.refresh_token || ""),
         },
-        "*"
+        getPostMessageTargetOrigin()
       )
-      window.opener.postMessage({ type: "loop-events-auth-complete" }, "*")
+      window.opener.postMessage({ type: "loop-events-auth-complete" }, getPostMessageTargetOrigin())
     } catch {
       // ignore cross-window notify errors
     }

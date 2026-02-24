@@ -142,18 +142,11 @@ function authHeaders(tokenInput?: string) {
   return { Authorization: `Bearer ${token}` }
 }
 
+const PRODUCTION_BACKEND = "https://loop-events.onrender.com"
+
 function apiUrl(path: string) {
-  const raw = String(window.__LOOP_EVENTS_BACKEND__ || "").trim()
   const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
-  const defaultBase = isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com"
-  let base = raw || defaultBase
-  if (/^localhost:\d+$/i.test(base) || /^127\.0\.0\.1:\d+$/i.test(base)) {
-    base = `http://${base}`
-  }
-  if (!/^https?:\/\//i.test(base)) {
-    base = defaultBase
-  }
-  base = base.replace(":1337", ":3001")
+  const base = isLocalHost ? "http://localhost:3001" : PRODUCTION_BACKEND
   const clean = base.replace(/\/+$/, "")
   const p = path.startsWith("/") ? path : `/${path}`
   return `${clean}${p}`
@@ -164,26 +157,6 @@ function apiFetch(path: string, init?: RequestInit) {
     ...(init || {}),
     cache: "no-store",
   })
-}
-
-function normalizeBackendBase(rawInput: string) {
-  let raw = String(rawInput || "").trim()
-  if (!raw) return ""
-  if (/^localhost:\d+$/i.test(raw) || /^127\.0\.0\.1:\d+$/i.test(raw)) {
-    raw = `http://${raw}`
-  }
-  if (!/^https?:\/\//i.test(raw)) return ""
-  return raw.replace(":1337", ":3001").replace(/\/+$/, "")
-}
-
-function backendCandidates() {
-  const explicit = normalizeBackendBase(String(window.__LOOP_EVENTS_BACKEND__ || ""))
-  const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(String(window.location.hostname || ""))
-  const defaultBase = normalizeBackendBase(isLocalHost ? "http://localhost:3001" : "https://loop-events.onrender.com")
-  const local = normalizeBackendBase("http://localhost:3001")
-  const hosted = normalizeBackendBase("https://loop-events.onrender.com")
-  const out = [explicit, defaultBase, local, hosted].filter(Boolean)
-  return Array.from(new Set(out))
 }
 
 function safeLower(v: any) {
@@ -622,21 +595,10 @@ export function useLoopEvents(authToken?: string) {
       if (inFlight) return
       inFlight = true
       try {
-        let ok = false
-        const candidates = backendCandidates()
-        for (const base of candidates) {
-          try {
-            const res = await fetch(`${base}/health`, { cache: "no-store" })
-            const data = await safeJson(res)
-            if (res.ok && Boolean((data as any)?.ok)) {
-              window.__LOOP_EVENTS_BACKEND__ = base
-              ok = true
-              break
-            }
-          } catch {
-            // try next backend candidate
-          }
-        }
+        const base = apiUrl("")
+        const res = await fetch(`${base}/health`, { cache: "no-store" })
+        const data = await safeJson(res)
+        const ok = res.ok && Boolean((data as any)?.ok)
         if (!cancelled) setServerOk(ok)
       } catch {
         if (!cancelled) setServerOk(false)
