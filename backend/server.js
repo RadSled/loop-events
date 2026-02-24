@@ -47,10 +47,18 @@ const TEST_PLAN_ALLOWLIST = String(process.env.TEST_PLAN_ALLOWLIST || "creator@r
   .filter(Boolean)
 const CORS_ALLOWLIST = Array.from(
   new Set(
-    String(process.env.CORS_ALLOWLIST || "")
-      .split(",")
-      .map((x) => String(x || "").trim().replace(/\/+$/, ""))
-      .filter(Boolean)
+    [
+      ...String(process.env.CORS_ALLOWLIST || "")
+        .split(",")
+        .map((x) => String(x || "").trim().replace(/\/+$/, ""))
+        .filter(Boolean),
+      "https://webflow.com",
+      "https://www.webflow.com",
+      "https://webflow.io",
+      "https://www.webflow.io",
+      "https://*.webflow.io",
+      "https://*.design.webflow.io",
+    ].filter(Boolean)
   )
 )
 const SCHEDULER_ENABLED = String(process.env.SCHEDULER_ENABLED || "true").trim().toLowerCase() !== "false"
