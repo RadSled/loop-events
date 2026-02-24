@@ -51,7 +51,7 @@ html, body { overflow-x: hidden; }
 .le-btn { width: 100%; height: 35px; }
 
 .le-drawerToolsRow {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .le-accountTabs {
