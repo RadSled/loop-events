@@ -2856,6 +2856,5 @@ if (SCHEDULER_ENABLED) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`)
-  console.log(`OAuth start: http://localhost:${PORT}/oauth/start`)
+  console.log(`Backend started on port ${PORT}`)
 })
