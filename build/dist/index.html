@@ -11,8 +11,23 @@
     <script>
       (function() {
         window.__LOOP_EVENTS_BACKEND__ = "https://loop-events.onrender.com"
-        window.__SUPABASE_URL__ = "https://rgbaagmzszzouhhixpbl.supabase.co";
-        window.__SUPABASE_ANON_KEY__ = "sb_publishable_UROiNGg8lrbDDAllVz8ggg_UsQ_jFa_";
+
+        // Fetch Supabase config from backend
+        fetch("https://loop-events.onrender.com/api/config")
+          .then(function(res) { return res.json() })
+          .then(function(config) {
+            if (config.supabaseUrl) window.__SUPABASE_URL__ = config.supabaseUrl
+            if (config.supabaseAnonKey) window.__SUPABASE_ANON_KEY__ = config.supabaseAnonKey
+          })
+          .catch(function() {
+            // Continue without config - will fail gracefully
+          })
+
+        var appScript = document.createElement("script")
+        appScript.src = "./bundle.js"
+        document.body.appendChild(appScript)
+      })()
+    </script>
 
         const hash = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""))
         const isOAuthPopup = Boolean(window.opener && window.opener !== window && window.name === "loop-events-oauth")

@@ -35,6 +35,7 @@ const LEGACY_TOKENS_PATH = path.join(__dirname, "tokens.dev.json")
 const PROCESSED_STRIPE_EVENTS_PATH = path.join(ROOT_DATA_DIR, "stripe", "processed-events.json")
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "")
 const SUPABASE_SECRET_KEY = String(process.env.SUPABASE_SECRET_KEY || "").trim()
+const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || "").trim()
 const STRIPE_SECRET_KEY = String(process.env.STRIPE_SECRET_KEY || "").trim()
 const STRIPE_PRICE_ID_PAID = String(process.env.STRIPE_PRICE_ID_PAID || "").trim()
 const STRIPE_WEBHOOK_SECRET = String(process.env.STRIPE_WEBHOOK_SECRET || "").trim()
@@ -1856,6 +1857,13 @@ app.get("/oauth/callback", async (req, res) => {
 
 app.get("/health", (req, res) => {
   res.json({ ok: true })
+})
+
+app.get("/api/config", (req, res) => {
+  res.json({
+    supabaseUrl: SUPABASE_URL || null,
+    supabaseAnonKey: SUPABASE_ANON_KEY || null,
+  })
 })
 
 app.get("/billing/success", (req, res) => {
