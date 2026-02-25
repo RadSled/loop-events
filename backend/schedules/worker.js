@@ -1,5 +1,10 @@
+const crypto = require("crypto")
 const { isTodayOrFutureStart } = require("./time")
 const { patchSchedule } = require("./store")
+
+function generateRunId() {
+  return `run_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`
+}
 
 function isTransientReason(reason) {
   const msg = String(reason || "").toLowerCase()
@@ -236,7 +241,7 @@ async function runSchedule(schedule, deps) {
     const runsBase = Array.isArray(schedule.runs) ? schedule.runs : []
     const runEntry = shouldSaveRun
       ? {
-          runId: `run_${now}_${Math.random().toString(16).slice(2, 10)}`,
+          runId: generateRunId(),
           source: "refill",
           status: "ok",
           createdAt: now,
@@ -315,7 +320,7 @@ async function runSchedule(schedule, deps) {
   const now = Date.now()
   const runsBase = Array.isArray(schedule.runs) ? schedule.runs : []
   const runEntry = {
-    runId: `run_${now}_${Math.random().toString(16).slice(2, 10)}`,
+    runId: generateRunId(),
     source: "refill",
     status: "ok",
     createdAt: now,

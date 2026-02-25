@@ -208,7 +208,13 @@ function createRunId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `run_${crypto.randomUUID()}`
   }
-  return `run_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`
+  const arr = new Uint8Array(8)
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    crypto.getRandomValues(arr)
+  } else {
+    for (let i = 0; i < 8; i++) arr[i] = Math.floor(Math.random() * 256)
+  }
+  return `run_${Date.now()}_${Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('')}`
 }
 
 function scoreImageField(keyRaw: string): number {
@@ -1094,7 +1100,7 @@ export function useLoopEvents(authToken?: string) {
     }
 
     return {
-      id: `sched_${Math.random().toString(16).slice(2)}_${Date.now()}`,
+      id: `sched_${typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(16).slice(2)}`}`,
       createdAt: Date.now(),
       isPaused: false,
       isStopped: false,
