@@ -2088,7 +2088,6 @@ export default function App() {
   }, [supabase])
 
   useEffect(() => {
-    (window as any).__LOOP_EVENTS_AUTH_TOKEN__ = String(session?.access_token || "")
     void fetchPlanState(session)
   }, [session])
 
@@ -2391,6 +2390,14 @@ export default function App() {
             return { ok: false, error: "Missing checkout url" }
           }
 
+          const validDomains = ["https://checkout.stripe.com/", "https://billing.stripe.com/", "https://billingportal.stripe.com/"]
+          const isValidUrl = validDomains.some(domain => url.startsWith(domain))
+          if (!isValidUrl) {
+            try { billingTab?.close() } catch { /* ignore close error */ }
+            setPlanMessage("Invalid checkout URL received")
+            return { ok: false, error: "Invalid checkout URL" }
+          }
+
           billingTab.location.href = url
           return { ok: true }
         } catch (err: any) {
@@ -2439,6 +2446,14 @@ export default function App() {
             try { billingTab?.close() } catch { /* ignore close error */ }
             setPlanMessage("Missing billing portal url")
             return { ok: false, error: "Missing billing portal url" }
+          }
+
+          const validDomains = ["https://checkout.stripe.com/", "https://billing.stripe.com/", "https://billingportal.stripe.com/"]
+          const isValidUrl = validDomains.some(domain => url.startsWith(domain))
+          if (!isValidUrl) {
+            try { billingTab?.close() } catch { /* ignore close error */ }
+            setPlanMessage("Invalid billing portal URL received")
+            return { ok: false, error: "Invalid billing portal URL" }
           }
 
           billingTab.location.href = url

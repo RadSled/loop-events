@@ -132,12 +132,11 @@ export type AutoRefillSchedule = {
 declare global {
   interface Window {
     __LOOP_EVENTS_BACKEND__?: string
-    __LOOP_EVENTS_AUTH_TOKEN__?: string
   }
 }
 
-function authHeaders(tokenInput?: string) {
-  const token = String(tokenInput || window.__LOOP_EVENTS_AUTH_TOKEN__ || "").trim()
+function authHeaders(tokenInput: string) {
+  const token = String(tokenInput || "").trim()
   if (!token) return {}
   return { Authorization: `Bearer ${token}` }
 }
