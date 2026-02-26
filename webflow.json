@@ -1,6 +1,6 @@
 {
   "name": "loop-events",
-  "publicDir": "dist",
+  "publicDir": "public",
   "size": "comfortable",
   "apiVersion": "2",
   "telemetry": {
