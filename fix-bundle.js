@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const bundlePath = path.join(__dirname, 'public', 'bundle.js');
+const bundlePath = path.join(__dirname, 'public', 'index.js');
 const indexPath = path.join(__dirname, 'public', 'index.html');
 
 const isProduction = process.env.NODE_ENV === 'production';

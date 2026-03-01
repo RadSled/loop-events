@@ -149,7 +149,6 @@ app.use((req, res, next) => {
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff")
-  res.setHeader("X-Frame-Options", "DENY")
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin")
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
   if (req.path === "/health" || req.path.startsWith("/api/")) {
@@ -162,7 +161,10 @@ app.use((req, res, next) => {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
   }
   if (req.path === "/auth/callback" || req.path === "/billing/success" || req.path === "/billing/cancel" || req.path === "/billing/return") {
-    res.setHeader("Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:;")
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors https://webflow.com https://www.webflow.com https://webflow.io https://www.webflow.io https://*.webflow-ext.com;"
+    )
   }
   next()
 })
@@ -1941,6 +1943,29 @@ app.get("/auth/callback", (req, res) => {
         var err = String(hash.get("error_description") || hash.get("error") || "").trim()
         var titleEl = document.getElementById("title")
         var textEl = document.getElementById("text")
+        var fallbackTargetOrigin = "https://webflow.com"
+
+        function isTrustedPostMessageOrigin(origin) {
+          var raw = String(origin || "").trim()
+          if (!raw) return false
+          if (raw === "https://webflow.com") return true
+          if (raw === "https://www.webflow.com") return true
+          if (raw === "https://webflow.io") return true
+          if (raw === "https://www.webflow.io") return true
+          if (/^https:\/\/[a-z0-9-]+\.webflow-ext\.com$/i.test(raw)) return true
+          return false
+        }
+
+        function getTargetOrigin() {
+          try {
+            var ref = String(document.referrer || "").trim()
+            if (!ref) return fallbackTargetOrigin
+            var origin = new URL(ref).origin
+            return isTrustedPostMessageOrigin(origin) ? origin : fallbackTargetOrigin
+          } catch (e) {
+            return fallbackTargetOrigin
+          }
+        }
 
         function setState(title, text) {
           if (titleEl) titleEl.textContent = title
@@ -1959,15 +1984,16 @@ app.get("/auth/callback", (req, res) => {
 
         try {
           if (window.opener && window.opener !== window) {
+            var targetOrigin = getTargetOrigin()
             window.opener.postMessage(
               {
                 type: "loop-events-auth-session",
                 access_token: accessToken,
                 refresh_token: refreshToken,
               },
-              "https://webflow.com"
+              targetOrigin
             )
-            window.opener.postMessage({ type: "loop-events-auth-complete" }, "https://webflow.com")
+            window.opener.postMessage({ type: "loop-events-auth-complete" }, targetOrigin)
           }
 
           if (attemptId) {

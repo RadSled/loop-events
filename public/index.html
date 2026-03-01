@@ -5,94 +5,31 @@
     <title>Loop Events</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-
   <body>
     <div id="root"></div>
     <script>
-      (function() {
-        window.__LOOP_EVENTS_BACKEND__ = "https://loop-events.onrender.com"
+      (function () {
+        var backendBase = "https://loop-events.onrender.com"
+        window.__LOOP_EVENTS_BACKEND__ = backendBase
 
-        // Fetch Supabase config from backend
-        fetch("https://loop-events.onrender.com/api/config")
-          .then(function(res) { return res.json() })
-          .then(function(config) {
-            if (config.supabaseUrl) window.__SUPABASE_URL__ = config.supabaseUrl
-            if (config.supabaseAnonKey) window.__SUPABASE_ANON_KEY__ = config.supabaseAnonKey
-          })
-          .catch(function() {
-            // Continue without config - will fail gracefully
-          })
-
-        var appScript = document.createElement("script")
-        appScript.src = "./index.js"
-        document.body.appendChild(appScript)
-      })()
-    </script>
-
-        const hash = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""))
-        const isOAuthPopup = Boolean(window.opener && window.opener !== window && window.name === "loop-events-oauth")
-        const accessToken = String(hash.get("access_token") || "").trim()
-        const refreshToken = String(hash.get("refresh_token") || "").trim()
-        const authError = String(hash.get("error_description") || hash.get("error") || "").trim()
-
-        const TRUSTED_ORIGINS = [
-          "https://webflow.com",
-          "https://www.webflow.com",
-          "https://webflow.io",
-          "https://www.webflow.io",
-          "https://loop-events.onrender.com"
-        ]
-
-        function isTrustedOrigin(origin) {
-          if (!origin) return false
-          return TRUSTED_ORIGINS.some(function(trusted) {
-            if (trusted.startsWith("https://*.")) {
-              const suffix = trusted.slice("https://".length)
-              return origin.endsWith(suffix)
-            }
-            return origin === trusted
-          })
-        }
-
-        if (isOAuthPopup && (authError || (accessToken && refreshToken))) {
-          const root = document.getElementById("root")
-          if (root) {
-            root.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;background:#eef2f8;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#0f172a;"><div style="width:min(460px,calc(100vw - 24px));border-radius:14px;border:1px solid #dfe7f3;background:#fff;box-shadow:0 16px 30px rgba(15,23,42,0.12);padding:14px;"><div style="font-size:16px;font-weight:700;">' + (authError ? "Could not complete authentication" : "Login successful") + '</div><div style="margin-top:8px;font-size:13px;color:#475569;">' + (authError ? authError : "You can close this tab and go back to Webflow.") + '</div><button type="button" onclick="window.close()" style="margin-top:12px;height:34px;border-radius:10px;border:1px solid #d7dfef;background:#fff;color:#1f2937;font-weight:600;cursor:pointer;padding:0 12px;">Close tab</button></div></div>'
-          }
-
-          if (!authError) {
-            try {
-              window.opener.postMessage(
-                {
-                  type: "loop-events-auth-session",
-                  access_token: accessToken,
-                  refresh_token: refreshToken,
-                },
-                "https://webflow.com"
-              )
-              window.opener.postMessage({ type: "loop-events-auth-complete" }, "https://webflow.com")
-            } catch (e) {
-              try {
-                window.opener.postMessage(
-                  {
-                    type: "loop-events-auth-session",
-                    access_token: accessToken,
-                    refresh_token: refreshToken,
-                  },
-                  "https://webflow.io"
-                )
-                window.opener.postMessage({ type: "loop-events-auth-complete" }, "https://webflow.io")
-              } catch {}
-            }
-            window.setTimeout(function() {
-              try { window.close() } catch {}
-            }, 900)
-          }
-        } else {
+        function loadApp() {
           var appScript = document.createElement("script")
           appScript.src = "./index.js"
           document.body.appendChild(appScript)
         }
+
+        fetch(backendBase + "/api/config", { cache: "no-store" })
+          .then(function (res) {
+            return res.json()
+          })
+          .then(function (config) {
+            if (config && config.supabaseUrl) window.__SUPABASE_URL__ = String(config.supabaseUrl)
+            if (config && config.supabaseAnonKey) window.__SUPABASE_ANON_KEY__ = String(config.supabaseAnonKey)
+          })
+          .catch(function () {
+            // App handles missing config with a user-facing error
+          })
+          .finally(loadApp)
       })()
     </script>
   </body>

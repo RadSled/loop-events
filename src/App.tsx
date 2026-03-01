@@ -58,8 +58,13 @@ const TRUSTED_AUTH_ORIGINS = [
   PRODUCTION_BACKEND,
 ]
 
+function isTrustedWebflowExtOrigin(origin: string): boolean {
+  return /^https:\/\/[a-z0-9-]+\.webflow-ext\.com$/i.test(origin)
+}
+
 function isTrustedAuthOrigin(origin: string): boolean {
   if (!origin) return false
+  if (isTrustedWebflowExtOrigin(origin)) return true
   return TRUSTED_AUTH_ORIGINS.some(trusted => {
     if (trusted.startsWith("https://*.")) {
       const suffix = trusted.slice("https://".length)
@@ -70,6 +75,15 @@ function isTrustedAuthOrigin(origin: string): boolean {
 }
 
 function getPostMessageTargetOrigin(): string {
+  try {
+    const ref = String(document.referrer || "").trim()
+    if (ref) {
+      const origin = new URL(ref).origin
+      if (isTrustedAuthOrigin(origin)) return origin
+    }
+  } catch {
+    // ignore malformed referrer
+  }
   return "https://webflow.com"
 }
 

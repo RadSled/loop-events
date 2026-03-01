@@ -9,7 +9,7 @@ const dirname = path.dirname(filename);
 export default {
   entry: "./src/index.tsx",
   output: {
-    filename: "bundle.js",
+    filename: "index.js",
     path: path.resolve(dirname, "public"),
   },
   resolve: {
