@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "concurrently \"webflow extension serve\" \"npm run watch-webpack\" \"npm run oauth\"",
     "oauth": "node backend/server.js",
-    "build": "npm run build-webpack && node scripts/package-bundle.js",
+    "build": "npm run build-webpack && npx @webflow/webflow-cli extension bundle",
     "watch-webpack": "webpack --config webpack.config.mjs --mode development --watch",
     "build-webpack": "export NODE_ENV=production && webpack --config webpack.config.mjs --mode production && node fix-bundle.js",
     "lint": "eslint . --ext .ts,.tsx"

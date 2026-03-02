@@ -1,41 +1,27 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Loop Events</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script>
-      (function () {
-        var backendBase = "https://loop-events.onrender.com"
-        window.__LOOP_EVENTS_BACKEND__ = backendBase
+<link rel="stylesheet" href="./styles.css" />
+<div id="root"></div>
+<script>
+  (function () {
+    var backendBase = "https://loop-events.onrender.com"
+    window.__LOOP_EVENTS_BACKEND__ = backendBase
 
-        function loadApp() {
-          var appScript = document.createElement("script")
-          appScript.src = "./index.js"
-          appScript.onerror = function () {
-            var fallbackScript = document.createElement("script")
-            fallbackScript.src = "./bundle.js"
-            document.body.appendChild(fallbackScript)
-          }
-          document.body.appendChild(appScript)
-        }
+    function loadApp() {
+      var appScript = document.createElement("script")
+      appScript.src = "./index.js"
+      document.body.appendChild(appScript)
+    }
 
-        fetch(backendBase + "/api/config", { cache: "no-store" })
-          .then(function (res) {
-            return res.json()
-          })
-          .then(function (config) {
-            if (config && config.supabaseUrl) window.__SUPABASE_URL__ = String(config.supabaseUrl)
-            if (config && config.supabaseAnonKey) window.__SUPABASE_ANON_KEY__ = String(config.supabaseAnonKey)
-          })
-          .catch(function () {
-            // App handles missing config with a user-facing error
-          })
-          .finally(loadApp)
-      })()
-    </script>
-  </body>
-</html>
+    fetch(backendBase + "/api/config", { cache: "no-store" })
+      .then(function (res) {
+        return res.json()
+      })
+      .then(function (config) {
+        if (config && config.supabaseUrl) window.__SUPABASE_URL__ = String(config.supabaseUrl)
+        if (config && config.supabaseAnonKey) window.__SUPABASE_ANON_KEY__ = String(config.supabaseAnonKey)
+      })
+      .catch(function () {
+        // App handles missing config with a user-facing error
+      })
+      .finally(loadApp)
+  })()
+</script>
