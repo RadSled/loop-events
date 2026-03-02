@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const bundlePath = path.join(__dirname, 'public', 'index.js');
+const bundleAliasPath = path.join(__dirname, 'public', 'bundle.js');
 const indexPath = path.join(__dirname, 'public', 'index.html');
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -20,5 +21,6 @@ if (isProduction) {
 }
 
 fs.writeFileSync(bundlePath, bundle);
+fs.writeFileSync(bundleAliasPath, bundle);
 fs.writeFileSync(indexPath, index);
 console.log('Bundle cleaned');

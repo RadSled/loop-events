@@ -8,7 +8,7 @@ const TEMP_DIR = path.join(ROOT, ".bundle-tmp")
 const TEMP_PUBLIC_DIR = path.join(TEMP_DIR, "public")
 const OUTPUT_ZIP = path.join(ROOT, "bundle.zip")
 
-const REQUIRED_PUBLIC_FILES = ["index.html", "index.js", "styles.css"]
+const REQUIRED_PUBLIC_FILES = ["index.html", "index.js", "bundle.js", "styles.css"]
 
 function ensureFileExists(filePath) {
   if (!fs.existsSync(filePath)) {

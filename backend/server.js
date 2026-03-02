@@ -1952,7 +1952,11 @@ app.get("/auth/callback", (req, res) => {
           if (raw === "https://www.webflow.com") return true
           if (raw === "https://webflow.io") return true
           if (raw === "https://www.webflow.io") return true
-          if (/^https:\/\/[a-z0-9-]+\.webflow-ext\.com$/i.test(raw)) return true
+          if (raw.startsWith("https://") && raw.endsWith(".webflow-ext.com")) {
+            var host = raw.slice("https://".length)
+            var prefix = host.slice(0, host.length - ".webflow-ext.com".length)
+            if (/^[a-z0-9-]+$/i.test(prefix)) return true
+          }
           return false
         }
 
