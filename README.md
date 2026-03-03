@@ -17,3 +17,8 @@ npm run build
 ```
 
 This command prepares a `${bundleFile}` in the root folder. Upload this `bundle.zip` file for distributing the App inside of your workspace or via the Marketplace.
+
+## Security and operations
+
+- The backend on Render (`https://loop-events.onrender.com`) is a required production dependency.
+- Review `docs/OPERATIONS.md` for alerting, access controls, log handling, and credential rotation.

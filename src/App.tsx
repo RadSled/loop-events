@@ -288,7 +288,6 @@ type PlanStateSnapshot = {
 
 function AuthenticatedApp(props: {
   user: User
-  accessToken: string
   onSignOut: () => Promise<void>
   onUpdateProfile: (fullName: string) => Promise<{ ok: boolean; error?: string }>
   onUpdatePassword: (currentPassword: string, nextPassword: string) => Promise<{ ok: boolean; error?: string }>
@@ -309,7 +308,6 @@ function AuthenticatedApp(props: {
 }) {
   const {
     user,
-    accessToken,
     onSignOut,
     onUpdateProfile,
     onUpdatePassword,
@@ -328,7 +326,7 @@ function AuthenticatedApp(props: {
     onStartCheckout,
     onOpenBillingPortal,
   } = props
-  const le = useLoopEvents(accessToken)
+  const le = useLoopEvents()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [confirmDowngrade, setConfirmDowngrade] = useState(false)
   const [comparePlansOpen, setComparePlansOpen] = useState(false)
@@ -399,8 +397,8 @@ function AuthenticatedApp(props: {
   async function fetchNotifications() {
     try {
       const res = await fetch(backendApiUrl("/api/notifications"), {
-        headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
+        credentials: "include",
       })
       if (!res.ok) {
         const txt = await res.text().catch(() => "")
@@ -510,7 +508,6 @@ function AuthenticatedApp(props: {
   }, [le.runStatus?.type, le.runStatus?.msg])
 
   useEffect(() => {
-    if (!accessToken) return
     void fetchNotifications()
     const id = window.setInterval(() => {
       void fetchNotifications()
@@ -519,7 +516,7 @@ function AuthenticatedApp(props: {
       window.clearInterval(id)
       stopPlanSyncPolling()
     }
-  }, [accessToken])
+  }, [])
 
   useEffect(() => {
     const key = `loop-events-tutorial-dismissed-${String(user?.id || "anon")}`
@@ -554,7 +551,7 @@ function AuthenticatedApp(props: {
   async function markNotificationsSeen() {
     const res = await fetch(backendApiUrl("/api/notifications/read-all"), {
       method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     }).catch(() => null)
     if (!res || !res.ok) return
     const now = Date.now()
@@ -566,13 +563,13 @@ function AuthenticatedApp(props: {
     if (!safeId) return
     const res = await fetch(backendApiUrl(`/api/notifications/${encodeURIComponent(safeId)}`), {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     }).catch(() => null)
 
     if (!res || !res.ok) {
       const readRes = await fetch(backendApiUrl(`/api/notifications/${encodeURIComponent(safeId)}/read`), {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include",
       }).catch(() => null)
       if (!readRes || !readRes.ok) return
     }
@@ -1957,14 +1954,81 @@ export default function App() {
   const [planBusy, setPlanBusy] = useState(false)
   const [planMessage, setPlanMessage] = useState("")
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS)
+  const [pendingAuthAttemptId, setPendingAuthAttemptId] = useState(() => {
+    try {
+      return String(window.sessionStorage.getItem("loop-events-auth-attempt") || "").trim()
+    } catch {
+      return ""
+    }
+  })
+
+  function clearPendingAuthAttempt() {
+    try {
+      window.sessionStorage.removeItem("loop-events-auth-attempt")
+    } catch {
+      // ignore storage failures
+    }
+    setPendingAuthAttemptId("")
+  }
+
+  async function syncBackendAuthSession(nextSession: Session | null) {
+    const accessToken = String(nextSession?.access_token || "").trim()
+    const refreshToken = String(nextSession?.refresh_token || "").trim()
+    if (!accessToken || !refreshToken) return
+    try {
+      await fetch(backendApiUrl("/api/auth/session"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ accessToken, refreshToken }),
+      })
+    } catch {
+      // ignore cookie sync failures and continue with local session
+    }
+  }
+
+  async function consumeAuthRelayAttempt(attemptIdInput: string): Promise<boolean> {
+    const attemptId = String(attemptIdInput || "").trim()
+    if (!attemptId || !supabase) return false
+
+    const maxTries = 45
+    for (let i = 0; i < maxTries; i += 1) {
+      try {
+        const res = await fetch(backendApiUrl(`/api/auth/relay/${encodeURIComponent(attemptId)}`), {
+          cache: "no-store",
+          credentials: "include",
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) return false
+        const status = String((data as any)?.status || "")
+        if (status === "pending") {
+          await new Promise((resolve) => window.setTimeout(resolve, 700))
+          continue
+        }
+        if (status !== "ready") return false
+        const accessToken = String((data as any)?.accessToken || "").trim()
+        const refreshToken = String((data as any)?.refreshToken || "").trim()
+        if (!accessToken || !refreshToken) return false
+        const out = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        if (out.error) return false
+        setSession(out.data.session || null)
+        setAuthLoading(false)
+        await syncBackendAuthSession(out.data.session || null)
+        clearPendingAuthAttempt()
+        return true
+      } catch {
+        await new Promise((resolve) => window.setTimeout(resolve, 700))
+      }
+    }
+    return false
+  }
 
   async function fetchPlanState(activeSession?: Session | null): Promise<PlanStateSnapshot | null> {
     if (!supabase) return null
     try {
       setPlanStateLoading(true)
       const s = activeSession || (await supabase.auth.getSession()).data.session
-      const token = String(s?.access_token || "").trim()
-      if (!token) {
+      if (!s?.user) {
         setPlanLabel("Free")
         setPlanMaxSchedules(1)
         setActiveScheduleCount(0)
@@ -1978,8 +2042,8 @@ export default function App() {
       }
 
       const res = await fetch(backendApiUrl("/api/plan"), {
-        headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
+        credentials: "include",
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -2073,6 +2137,7 @@ export default function App() {
 
       setSession(nextSession)
       setAuthLoading(false)
+      void syncBackendAuthSession(nextSession)
     }
 
     void supabase.auth.getSession().then(({ data }) => {
@@ -2116,30 +2181,29 @@ export default function App() {
       if (!isTrustedAuthOrigin(evt.origin)) return
       const data = evt && typeof evt.data === "object" ? (evt.data as any) : null
       if (!data) return
-
-      if (data.type === "loop-events-auth-session") {
-        const accessToken = String(data.access_token || "").trim()
-        const refreshToken = String(data.refresh_token || "").trim()
-        if (!accessToken || !refreshToken) return
-        void supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ data: next, error }) => {
-          if (!error) {
-            setSession(next.session || null)
-          }
-          setAuthLoading(false)
-        })
-        return
-      }
-
       if (data.type !== "loop-events-auth-complete") return
+
+      const attemptId = String(data.attemptId || "").trim()
+      if (attemptId) {
+        try {
+          window.sessionStorage.setItem("loop-events-auth-attempt", attemptId)
+        } catch {
+          // ignore storage failures
+        }
+        setPendingAuthAttemptId(attemptId)
+      }
 
       void supabase.auth.getSession().then(({ data: next }) => {
         setSession(next.session || null)
         setAuthLoading(false)
+        if (attemptId && !next.session?.user) {
+          void consumeAuthRelayAttempt(attemptId)
+        }
       })
     }
     window.addEventListener("message", onAuthDone)
     return () => window.removeEventListener("message", onAuthDone)
-  }, [supabase])
+  }, [supabase, pendingAuthAttemptId])
 
   useEffect(() => {
     if (!isAuthCallback || authLoading) return
@@ -2149,6 +2213,7 @@ export default function App() {
           await fetch(backendApiUrl("/api/auth/relay"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
               attemptId: authAttemptId,
               accessToken: hashState.accessToken,
@@ -2156,23 +2221,13 @@ export default function App() {
             }),
           })
         } catch {
-          // ignore relay failure and keep postMessage fallback below
+          // ignore relay failure
         }
       }
 
       try {
-        if (hashState.accessToken && hashState.refreshToken && window.opener && window.opener !== window) {
-          window.opener.postMessage(
-            {
-              type: "loop-events-auth-session",
-              access_token: hashState.accessToken,
-              refresh_token: hashState.refreshToken,
-            },
-            getPostMessageTargetOrigin()
-          )
-        }
         if (window.opener && window.opener !== window) {
-          window.opener.postMessage({ type: "loop-events-auth-complete" }, getPostMessageTargetOrigin())
+          window.opener.postMessage({ type: "loop-events-auth-complete", attemptId: authAttemptId || "" }, getPostMessageTargetOrigin())
         }
       } catch {
         // ignore cross-window notify errors
@@ -2192,34 +2247,13 @@ export default function App() {
   }, [isAuthCallback, authLoading, authCallbackError, hashState.accessToken, hashState.refreshToken, authAttemptId])
 
   useEffect(() => {
-    if (authLoading) return
-    if (!session?.access_token || !session?.refresh_token) return
-    if (!window.opener || window.opener === window) return
-
-    try {
-      window.opener.postMessage(
-        {
-          type: "loop-events-auth-session",
-          access_token: String(session.access_token || ""),
-          refresh_token: String(session.refresh_token || ""),
-        },
-        getPostMessageTargetOrigin()
-      )
-      window.opener.postMessage({ type: "loop-events-auth-complete" }, getPostMessageTargetOrigin())
-    } catch {
-      // ignore cross-window notify errors
+    if (!supabase || !pendingAuthAttemptId) return
+    if (session?.user) {
+      clearPendingAuthAttempt()
+      return
     }
-
-    const id = window.setTimeout(() => {
-      try {
-        window.close()
-      } catch {
-        // ignore close failures
-      }
-    }, 800)
-
-    return () => window.clearTimeout(id)
-  }, [authLoading, session?.access_token, session?.refresh_token])
+    void consumeAuthRelayAttempt(pendingAuthAttemptId)
+  }, [supabase, pendingAuthAttemptId, session?.user])
 
   if (isAuthCallback) {
     const mergedError = authCallbackError || configError
@@ -2265,8 +2299,15 @@ export default function App() {
   return (
     <AuthenticatedApp
       user={session.user}
-      accessToken={String(session.access_token || "")}
       onSignOut={async () => {
+        try {
+          await fetch(backendApiUrl("/api/auth/logout"), {
+            method: "POST",
+            credentials: "include",
+          })
+        } catch {
+          // ignore logout sync failure
+        }
         await supabase.auth.signOut()
       }}
       onUpdateProfile={async (fullName) => {
@@ -2303,17 +2344,14 @@ export default function App() {
           const { error } = await supabase.auth.updateUser({ password: pwd })
           if (error) return { ok: false, error: String(error.message || error) }
 
-          const token = String(session?.access_token || "").trim()
-          if (token) {
-            void fetch(backendApiUrl("/api/notifications/account-event"), {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ event: "password_changed" }),
-            })
-          }
+          void fetch(backendApiUrl("/api/notifications/account-event"), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ event: "password_changed" }),
+          })
 
           return { ok: true }
         } catch (err: any) {
@@ -2334,17 +2372,14 @@ export default function App() {
           const { data } = await supabase.auth.getSession()
           setSession(data.session || null)
 
-          const token = String(data.session?.access_token || session?.access_token || "").trim()
-          if (token) {
-            void fetch(backendApiUrl("/api/notifications/account-event"), {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ event: "notification_prefs_updated" }),
-            })
-          }
+          void fetch(backendApiUrl("/api/notifications/account-event"), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ event: "notification_prefs_updated" }),
+          })
 
           return { ok: true }
         } catch (err: any) {
@@ -2375,19 +2410,9 @@ export default function App() {
             setPlanMessage(msg)
             return { ok: false, error: msg }
           }
-          const s = (await supabase.auth.getSession()).data.session
-          const token = String(s?.access_token || "").trim()
-          if (!token) {
-            try { billingTab?.close() } catch { /* ignore close error */ }
-            setPlanBusy(false)
-            return { ok: false, error: "Not authenticated" }
-          }
-
           const res = await fetch(backendApiUrl("/api/billing/checkout"), {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            credentials: "include",
           })
           const data = await res.json().catch(() => ({}))
           setPlanBusy(false)
@@ -2433,19 +2458,9 @@ export default function App() {
             setPlanMessage(msg)
             return { ok: false, error: msg }
           }
-          const s = (await supabase.auth.getSession()).data.session
-          const token = String(s?.access_token || "").trim()
-          if (!token) {
-            try { billingTab?.close() } catch { /* ignore close error */ }
-            setPlanBusy(false)
-            return { ok: false, error: "Not authenticated" }
-          }
-
           const res = await fetch(backendApiUrl("/api/billing/portal"), {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            credentials: "include",
           })
           const data = await res.json().catch(() => ({}))
           setPlanBusy(false)

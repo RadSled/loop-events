@@ -1,27 +1,17 @@
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://loop-events.onrender.com https://rgbaagmzszzouhhixpbl.supabase.co; frame-ancestors https://webflow.com https://www.webflow.com https://webflow.io https://www.webflow.io https://*.webflow-ext.com;"
+/>
 <link rel="stylesheet" href="./styles.css" />
 <div id="root"></div>
 <script>
   (function () {
-    var backendBase = "https://loop-events.onrender.com"
-    window.__LOOP_EVENTS_BACKEND__ = backendBase
+    window.__LOOP_EVENTS_BACKEND__ = "https://loop-events.onrender.com"
+    window.__SUPABASE_URL__ = "https://rgbaagmzszzouhhixpbl.supabase.co"
+    window.__SUPABASE_ANON_KEY__ = "sb_publishable_UROiNGg8lrbDDAllVz8ggg_UsQ_jFa_"
 
-    function loadApp() {
-      var appScript = document.createElement("script")
-      appScript.src = "./index.js"
-      document.body.appendChild(appScript)
-    }
-
-    fetch(backendBase + "/api/config", { cache: "no-store" })
-      .then(function (res) {
-        return res.json()
-      })
-      .then(function (config) {
-        if (config && config.supabaseUrl) window.__SUPABASE_URL__ = String(config.supabaseUrl)
-        if (config && config.supabaseAnonKey) window.__SUPABASE_ANON_KEY__ = String(config.supabaseAnonKey)
-      })
-      .catch(function () {
-        // App handles missing config with a user-facing error
-      })
-      .finally(loadApp)
+    var appScript = document.createElement("script")
+    appScript.src = "./index.js"
+    document.body.appendChild(appScript)
   })()
 </script>

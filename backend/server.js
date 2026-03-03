@@ -133,6 +133,7 @@ app.use(
       }
       cb(null, false)
     },
+    credentials: true,
   })
 )
 
@@ -238,6 +239,9 @@ const sitePublishNextAllowedAt = new Map()
 const sitePublishInFlight = new Set()
 const authRelayStore = new Map()
 const AUTH_RELAY_TTL_MS = 5 * 60 * 1000
+const appSessionStore = new Map()
+const APP_SESSION_COOKIE = "loop_events_session"
+const APP_SESSION_TTL_MS = 12 * 60 * 60 * 1000
 const retryInFlight = new Set()
 const PLAN_LIMITS = {
   free: { maxRunCount: 10, maxSchedules: 1 },
@@ -262,6 +266,15 @@ function pruneAuthRelay() {
   }
 }
 
+function pruneAppSessions() {
+  const now = Date.now()
+  for (const [sessionId, row] of appSessionStore.entries()) {
+    if (!row || now - Number(row.createdAt || 0) > APP_SESSION_TTL_MS) {
+      appSessionStore.delete(sessionId)
+    }
+  }
+}
+
 function isValidAttemptId(input) {
   const value = String(input || "").trim()
   if (!value) return false
@@ -270,6 +283,73 @@ function isValidAttemptId(input) {
 }
 
 setInterval(pruneAuthRelay, 30 * 1000).unref()
+setInterval(pruneAppSessions, 30 * 1000).unref()
+
+function parseCookies(req) {
+  const raw = String(req.headers && req.headers.cookie ? req.headers.cookie : "")
+  if (!raw) return {}
+  return raw
+    .split(";")
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .reduce((acc, pair) => {
+      const idx = pair.indexOf("=")
+      if (idx <= 0) return acc
+      const key = pair.slice(0, idx).trim()
+      const val = pair.slice(idx + 1).trim()
+      if (!key) return acc
+      try {
+        acc[key] = decodeURIComponent(val)
+      } catch {
+        acc[key] = val
+      }
+      return acc
+    }, {})
+}
+
+function createAppSession(input = {}) {
+  const sessionId = crypto.randomBytes(24).toString("hex")
+  const now = Date.now()
+  appSessionStore.set(sessionId, {
+    userId: String(input.userId || "").trim(),
+    email: String(input.email || "").trim().toLowerCase(),
+    accessToken: String(input.accessToken || "").trim(),
+    refreshToken: String(input.refreshToken || "").trim(),
+    createdAt: now,
+    lastSeenAt: now,
+  })
+  return sessionId
+}
+
+function getAppSession(req) {
+  const cookies = parseCookies(req)
+  const sessionId = String(cookies[APP_SESSION_COOKIE] || "").trim()
+  if (!sessionId) return null
+  const row = appSessionStore.get(sessionId)
+  if (!row) return null
+  if (Date.now() - Number(row.createdAt || 0) > APP_SESSION_TTL_MS) {
+    appSessionStore.delete(sessionId)
+    return null
+  }
+  row.lastSeenAt = Date.now()
+  return { sessionId, row }
+}
+
+function setSessionCookie(res, sessionId) {
+  const maxAge = Math.floor(APP_SESSION_TTL_MS / 1000)
+  res.setHeader(
+    "Set-Cookie",
+    `${APP_SESSION_COOKIE}=${encodeURIComponent(sessionId)}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}`
+  )
+}
+
+function clearSessionCookie(req, res) {
+  const active = getAppSession(req)
+  if (active && active.sessionId) {
+    appSessionStore.delete(active.sessionId)
+  }
+  res.setHeader("Set-Cookie", `${APP_SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0`)
+}
 
 function ensureSupabaseServerConfig() {
   if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
@@ -748,21 +828,34 @@ function isAllowlistedPlanTester(email) {
 async function requireAuth(req, res, next) {
   try {
     const accessToken = getBearerToken(req)
-    if (!accessToken) {
+    let authUser = null
+
+    if (accessToken) {
+      const user = await getSupabaseUserFromToken(accessToken)
+      if (user && user.id) {
+        authUser = {
+          id: String(user.id),
+          email: String(user.email || "").trim().toLowerCase(),
+        }
+      }
+    }
+
+    if (!authUser) {
+      const activeSession = getAppSession(req)
+      if (activeSession && activeSession.row && activeSession.row.userId) {
+        authUser = {
+          id: String(activeSession.row.userId),
+          email: String(activeSession.row.email || "").trim().toLowerCase(),
+        }
+      }
+    }
+
+    if (!authUser) {
       res.status(401).json({ ok: false, error: "Not authenticated" })
       return
     }
 
-    const user = await getSupabaseUserFromToken(accessToken)
-    if (!user || !user.id) {
-      res.status(401).json({ ok: false, error: "Not authenticated" })
-      return
-    }
-
-    req.authUser = {
-      id: String(user.id),
-      email: String(user.email || "").trim().toLowerCase(),
-    }
+    req.authUser = authUser
 
     await notifyUser({
       userId: req.authUser.id,
@@ -1758,8 +1851,6 @@ app.get("/oauth/callback", async (req, res) => {
   }
 
   console.log("[OAuth] Callback received. Code:", code.substring(0, 10) + "...")
-  console.log("[OAuth] Full callback URL:", req.originalUrl || req.url)
-  console.log("[OAuth] Full query params:", JSON.stringify(req.query))
 
   try {
     const callbackRedirectUri = `${getPublicServerBase(req)}/oauth/callback`
@@ -1859,13 +1950,6 @@ app.get("/oauth/callback", async (req, res) => {
 
 app.get("/health", (req, res) => {
   res.json({ ok: true })
-})
-
-app.get("/api/config", (req, res) => {
-  res.json({
-    supabaseUrl: SUPABASE_URL || null,
-    supabaseAnonKey: SUPABASE_ANON_KEY || null,
-  })
 })
 
 app.get("/billing/success", (req, res) => {
@@ -1989,15 +2073,7 @@ app.get("/auth/callback", (req, res) => {
         try {
           if (window.opener && window.opener !== window) {
             var targetOrigin = getTargetOrigin()
-            window.opener.postMessage(
-              {
-                type: "loop-events-auth-session",
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              },
-              targetOrigin
-            )
-            window.opener.postMessage({ type: "loop-events-auth-complete" }, targetOrigin)
+            window.opener.postMessage({ type: "loop-events-auth-complete", attemptId: attemptId || "" }, targetOrigin)
           }
 
           if (attemptId) {
@@ -2033,25 +2109,76 @@ app.get("/auth/callback", (req, res) => {
 })
 
 app.post("/api/auth/relay", authRelayRateLimit, (req, res) => {
+  ;(async () => {
+    try {
+      const body = req.body || {}
+      const attemptId = String(body.attemptId || "").trim()
+      const accessToken = String(body.accessToken || "").trim()
+      const refreshToken = String(body.refreshToken || "").trim()
+
+      if (!isValidAttemptId(attemptId) || !accessToken || !refreshToken) {
+        return res.status(400).json({ ok: false, error: "Missing relay payload" })
+      }
+
+      const user = await getSupabaseUserFromToken(accessToken)
+      if (!user || !user.id) {
+        return res.status(401).json({ ok: false, error: "Invalid auth session" })
+      }
+
+      const sessionId = createAppSession({
+        userId: String(user.id),
+        email: String(user.email || "").trim().toLowerCase(),
+        accessToken,
+        refreshToken,
+      })
+      setSessionCookie(res, sessionId)
+
+      authRelayStore.set(attemptId, {
+        accessToken,
+        refreshToken,
+        createdAt: Date.now(),
+      })
+
+      res.json({ ok: true })
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) })
+    }
+  })()
+})
+
+app.post("/api/auth/session", authRelayRateLimit, async (req, res) => {
   try {
     const body = req.body || {}
-    const attemptId = String(body.attemptId || "").trim()
     const accessToken = String(body.accessToken || "").trim()
     const refreshToken = String(body.refreshToken || "").trim()
-
-    if (!isValidAttemptId(attemptId) || !accessToken || !refreshToken) {
-      return res.status(400).json({ ok: false, error: "Missing relay payload" })
+    if (!accessToken || !refreshToken) {
+      return res.status(400).json({ ok: false, error: "Missing auth session" })
     }
 
-    authRelayStore.set(attemptId, {
+    const user = await getSupabaseUserFromToken(accessToken)
+    if (!user || !user.id) {
+      return res.status(401).json({ ok: false, error: "Invalid auth session" })
+    }
+
+    const sessionId = createAppSession({
+      userId: String(user.id),
+      email: String(user.email || "").trim().toLowerCase(),
       accessToken,
       refreshToken,
-      createdAt: Date.now(),
     })
-
-    res.json({ ok: true })
+    setSessionCookie(res, sessionId)
+    return res.json({ ok: true })
   } catch (err) {
-    res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) })
+    return res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) })
+  }
+})
+
+app.post("/api/auth/logout", authRelayRateLimit, (req, res) => {
+  try {
+    clearSessionCookie(req, res)
+    return res.json({ ok: true })
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: String(err && err.message ? err.message : err) })
   }
 })
 

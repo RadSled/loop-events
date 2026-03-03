@@ -22,6 +22,11 @@ function oauthCallbackUrl() {
   return `${backendBaseUrl()}/auth/callback`
 }
 
+function createAuthAttemptId() {
+  const rand = Math.random().toString(36).slice(2)
+  return `att_${Date.now().toString(36)}_${rand}`
+}
+
 export default function AuthScreen(props: {
   supabase: SupabaseClient | null
   configError?: string
@@ -158,13 +163,26 @@ export default function AuthScreen(props: {
       const oauthRes = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: oauthCallback,
+          redirectTo: `${oauthCallback}?auth_attempt=${encodeURIComponent(createAuthAttemptId())}`,
           skipBrowserRedirect: true,
         },
       })
       if (oauthRes.error) throw oauthRes.error
       const nextUrl = String(oauthRes?.data?.url || "").trim()
       if (!nextUrl) throw new Error("Could not start OAuth flow")
+      try {
+        const u = new URL(nextUrl)
+        const redirectTo = String(u.searchParams.get("redirect_to") || "").trim()
+        if (redirectTo) {
+          const callback = new URL(redirectTo)
+          const attemptId = String(callback.searchParams.get("auth_attempt") || "").trim()
+          if (attemptId) {
+            window.sessionStorage.setItem("loop-events-auth-attempt", attemptId)
+          }
+        }
+      } catch {
+        // ignore malformed OAuth URL details
+      }
       oauthPopupRef.current = popup
       popup.location.href = nextUrl
       setBusy(false)

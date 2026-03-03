@@ -26,5 +26,5 @@ export function getSupabaseClient() {
 export function getSupabaseConfigError() {
   const { url, anonKey } = readConfig()
   if (url && anonKey) return ""
-  return "Missing Supabase config. Set window.__SUPABASE_URL__ and window.__SUPABASE_ANON_KEY__ in public/index.html"
+  return "Missing Supabase config. Set SUPABASE_URL and SUPABASE_ANON_KEY at build time."
 }
